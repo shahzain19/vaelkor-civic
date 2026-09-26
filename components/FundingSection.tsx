@@ -252,7 +252,7 @@ export function FundingSection({
           <p className="text-xs text-muted-foreground">
             Send the amount to the project bank account, then submit your claim with a screenshot.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground">Amount (PKR)</label>
               <Input
@@ -301,9 +301,9 @@ export function FundingSection({
           >
             {isLoading ? "Submitting…" : "Submit Claim"}
           </Button>
-          <p className="text-xs text-muted-foreground text-center">
-            Min: PKR {formatCents(FUND_CONTRIBUTION.min)} | Max: PKR {formatCents(FUND_CONTRIBUTION.max)}
-          </p>
+           <p className="text-xs text-muted-foreground text-center sm:text-left">
+             Min: PKR {formatCents(FUND_CONTRIBUTION.min)} | Max: PKR {formatCents(FUND_CONTRIBUTION.max)}
+           </p>
         </div>
       )}
 

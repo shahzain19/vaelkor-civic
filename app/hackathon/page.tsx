@@ -156,8 +156,8 @@ export default function HackathonPage() {
 
       {/* ── The Solution ─────────────────────────────────────────── */}
       <Section label="How it works">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {STEPS.map((s, i) => (
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {STEPS.map((s) => (
             <div
               key={s.step}
               className="rounded-[var(--radius)] border border-border bg-card p-4"
@@ -281,16 +281,17 @@ export default function HackathonPage() {
           {ROLES.map((r, i) => (
             <div
               key={r.role}
-              className={cn(
-                "grid gap-x-6 gap-y-1.5 py-4 lg:grid-cols-[11rem_minmax(0,1fr)_7rem]",
-                i > 0 && "border-t border-border",
-              )}
+                 className={cn(
+                   "py-4 first:border-t",
+                   "md:grid md:grid-cols-[11rem_minmax(0,1fr)_7rem] md:items-baseline",
+                   i > 0 && "border-t border-border",
+                 )}
             >
               <p className="text-[0.9375rem] font-medium">{r.role}</p>
-              <p className="text-[0.875rem] text-muted-foreground">{r.what}</p>
+              <p className="mt-2 text-[0.8125rem] text-muted-foreground md:mt-0">{r.what}</p>
               <Link
                 href={r.where}
-                className="inline-flex items-center gap-1 self-end text-[0.8125rem] font-medium text-foreground hover:underline lg:self-auto"
+                className="mt-2 inline-flex items-center gap-1 text-[0.8125rem] font-medium text-foreground hover:underline md:mt-0 md:self-auto"
               >
                 Go to {r.role === "Citizen" ? "report" : r.role === "Contractor" ? "work" : "inspect"}
                 <ArrowRight className="size-3.5" />

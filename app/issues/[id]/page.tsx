@@ -15,7 +15,6 @@ import {
 } from "@/components/status";
 import { ContactSheet, ProofPair } from "@/components/evidence";
 import { ActionButton, Banner, EmptyState, LiveRegion } from "@/components/feedback";
-import { FileDrop } from "@/components/form";
 import { FundingSection } from "@/components/FundingSection";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
@@ -35,9 +34,6 @@ export default function CaseFilePage({
   const { isAuthenticated } = useConvexAuth();
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const confirm = useMutation(api.issues.confirm);
-  const generateUploadUrl = useMutation(api.evidence.generateUploadUrl);
-  const attach = useMutation(api.evidence.attach);
-  const adjustGoal = useMutation(api.fund.adjustGoal);
   const myClaim = useQuery(api.fund.getMyClaim, isAuthenticated ? { issueId } : "skip");
 
 
@@ -139,7 +135,7 @@ export default function CaseFilePage({
         <PhaseRail status={issue.status} />
       </div>
 
-      <div className="grid gap-x-12 gap-y-2 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid gap-x-6 gap-y-10 lg:gap-x-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
         {/* ── Main column ─────────────────────────────────────────── */}
         <div className="min-w-0">
           <Section label="The report">
@@ -238,7 +234,7 @@ export default function CaseFilePage({
 
         {/* ── Action rail ─────────────────────────────────────────── */}
         <aside className="min-w-0 lg:sticky lg:top-[4.75rem] lg:self-start">
-          <div className="space-y-8 lg:pt-7">
+          <div className="space-y-8 lg:pt-0">
             {/* The one thing this viewer can do next, and why. */}
             <div className="rounded-[var(--radius)] border border-border bg-card p-4">
               <h2 className="eyebrow">Your move</h2>

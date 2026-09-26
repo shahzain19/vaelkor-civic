@@ -254,7 +254,7 @@ export default function LandingPage() {
             return (
               <div
                 key={r.role}
-                className="grid gap-x-6 gap-y-2 border-b border-border py-4 lg:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-baseline"
+                className="border-b border-border py-4 first:border-t"
               >
                 <div className="flex items-center gap-2">
                   <Icon
@@ -263,12 +263,12 @@ export default function LandingPage() {
                   />
                   <span className="text-[0.9375rem] font-medium">{r.label}</span>
                 </div>
-                <p className="text-[0.875rem] leading-relaxed">{r.can}</p>
-                <p className="text-[0.875rem] leading-relaxed text-muted-foreground">
-                  <span className="lg:sr-only">Cannot </span>
+                <p className="mt-2 text-[0.875rem] leading-relaxed">{r.can}</p>
+                <p className="mt-1 text-[0.875rem] leading-relaxed text-muted-foreground">
+                  <span className="sr-only">Cannot </span>
                   {r.cannot}
                 </p>
-                <div className="lg:text-right">
+                <div className="mt-3">
                   <Link
                     href={r.href}
                     className="inline-flex items-center gap-1 text-[0.8125rem] font-medium text-foreground hover:underline"
