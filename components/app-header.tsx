@@ -32,14 +32,15 @@ function useNav() {
   const map = { href: "/map", label: "Map" };
   const home = { href: "/", label: "Overview" };
   const about = { href: "/about", label: "About" };
+  const hackathon = { href: "/hackathon", label: "Hackathon" };
 
   if (!isAuthenticated)
-    return { items: [home, ledger, map, about], me: null, needsRole: false };
+    return { items: [home, ledger, map, about, hackathon], me: null, needsRole: false };
 
   switch (me?.role) {
     case "contractor":
       return {
-        items: [home, ledger, map, { href: "/contractor", label: "Work" }],
+        items: [home, ledger, map, { href: "/contractor", label: "Work" }, hackathon],
         me,
         needsRole: false,
       };
@@ -55,13 +56,14 @@ function useNav() {
           map,
           { href: "/inspect", label: "Inspections" },
           { href: "/admin", label: "Oversight" },
+          hackathon,
         ],
         me,
         needsRole: false,
       };
     default:
       return {
-        items: [home, ledger, map, { href: "/report", label: "Report" }],
+        items: [home, ledger, map, { href: "/report", label: "Report" }, hackathon],
         me,
         needsRole: !me?.role,
       };
