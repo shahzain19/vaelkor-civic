@@ -19,7 +19,7 @@ import { FileDrop } from "@/components/form";
 import { FundingSection } from "@/components/FundingSection";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, formatCents, type Role } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, formatCents, type Role } from "@/lib/civic";
 import { formatCoord } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -609,8 +609,8 @@ function AdminGoalAdjust({
       setError("Enter a valid amount (minimum PKR 1).");
       return;
     }
-    if (cents > 50000) {
-      setError("Maximum goal is PKR 500.");
+    if (cents > FUND_GOAL_MAX) {
+      setError(`Maximum goal is PKR ${formatCents(FUND_GOAL_MAX)}.`);
       return;
     }
 

@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { FUND_CONTRIBUTION, FUND_GOALS, FUND_GOAL_DEFAULT, formatCents } from "../lib/civic";
+import { FUND_CONTRIBUTION, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, formatCents } from "../lib/civic";
 import { requireRole, requireUser } from "./auth";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
@@ -195,9 +195,9 @@ export const adjustGoal = mutation({
           `Goal must be at least ${formatCents(FUND_CONTRIBUTION.min)}.`,
         );
       }
-      if (args.targetCents > FUND_CONTRIBUTION.max) {
+      if (args.targetCents > FUND_GOAL_MAX) {
         throw err.invalid(
-          `Maximum goal is ${formatCents(FUND_CONTRIBUTION.max)}.`,
+          `Maximum goal is ${formatCents(FUND_GOAL_MAX)}.`,
         );
       }
 

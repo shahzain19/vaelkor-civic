@@ -243,6 +243,9 @@ export const FUND_GOAL_DEFAULT = 5000;
 /** Bounds on a single pledge, in cents. */
 export const FUND_CONTRIBUTION = { min: 100, max: 50000 } as const;
 
+/** Maximum allowable fund goal for any case, in cents (PKR 15,000). */
+export const FUND_GOAL_MAX = 1500000;
+
 /** Work-order priority reuses the same visual language as the status tones. */
 export const PRIORITY_TONE: Record<string, Tone> = {
   high: "broken",
