@@ -31,9 +31,10 @@ function useNav() {
   // Public, like the ledger — the map is the same cases seen spatially.
   const map = { href: "/map", label: "Map" };
   const home = { href: "/", label: "Overview" };
+  const about = { href: "/about", label: "About" };
 
   if (!isAuthenticated)
-    return { items: [home, ledger, map], me: null, needsRole: false };
+    return { items: [home, ledger, map, about], me: null, needsRole: false };
 
   switch (me?.role) {
     case "contractor":
