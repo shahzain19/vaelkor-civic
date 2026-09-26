@@ -128,14 +128,13 @@ export default function LandingPage() {
             />
             <div className="eyebrow">Municipal fault reporting</div>
           </div>
-          <h1 className="text-[2.1rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.9rem]">
-            Street faults, reported, proven, and signed off in public.
-          </h1>
-          <p className="mt-5 text-[1.0625rem] leading-relaxed text-muted-foreground text-pretty">
-            Anyone can report what is broken. Neighbours confirm it. The work is
-            ordered, photographed before and after, and closed by an inspector
-            who never touched the tools. Every step is on the record.
-          </p>
+            <h1 className="text-[2.1rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.9rem]">
+              Karachi’s streets, fixed by the community.
+            </h1>
+            <p className="mt-5 text-[1.0625rem] leading-relaxed text-muted-foreground text-pretty">
+              Karachi’s streets need fixing. Report a fault, get it confirmed by neighbours, and see it completed with before-and-after photos. Every step is recorded for transparency.
+              Whether it’s a broken streetlight, a clogged drain, or a pothole, we make sure it gets fixed.
+            </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-2.5">
             <Link href="/report" className={buttonVariants({ size: "lg" })}>
