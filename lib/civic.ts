@@ -250,6 +250,16 @@ export const FUND_GOAL_MAX = 1500000;
 export const PAYMENT_METHODS = ["bank_transfer", "easypaisa", "jazzcash"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
+/** Demo project bank account details shown to citizens when submitting a claim. */
+export const PROJECT_BANK_DETAILS = {
+  bankName: "UBL Bank (Demo)",
+  accountName: "Vaelkor Civic — Karachi Street Fund",
+  accountNumber: "0356-0000123456-0",
+  easypaisa: "0300-1234567 (Demo)",
+  jazzcash: "0321-7654321 (Demo)",
+  note: "Send to this account, then submit your claim with a screenshot. Admin will verify and credit your contribution.",
+} as const;
+
 /** Work-order priority reuses the same visual language as the status tones. */
 export const PRIORITY_TONE: Record<string, Tone> = {
   high: "broken",

@@ -21,18 +21,6 @@ import { reachFundingStage } from "./flow";
 
 /* Helpers ------------------------------------------------------------------ */
 
-/** Returns the current fund goal for an issue. */
-async function getGoal(t: Harness, issueId: Id<"issues">): Promise<{ targetCents: number; id: Id<"fundGoals"> } | null> {
-  return t.run(async (ctx) => {
-    const goal = await ctx.db
-      .query("fundGoals")
-      .withIndex("by_issue", (q) => q.eq("issueId", issueId))
-      .first();
-    if (!goal) return null;
-    return { id: goal._id, targetCents: goal.targetCents };
-  });
-}
-
 /** Returns total raised from approved contributions. */
 async function getFundState(t: Harness, issueId: Id<"issues">) {
   return t.run(async (ctx) => {

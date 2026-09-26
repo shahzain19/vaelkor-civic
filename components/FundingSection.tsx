@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCents, FUND_CONTRIBUTION, PAYMENT_METHODS } from "@/lib/civic";
+import { formatCents, FUND_CONTRIBUTION, PAYMENT_METHODS, PROJECT_BANK_DETAILS } from "@/lib/civic";
 import { useState } from "react";
 import { ArrowUpRight, CheckCircle, Clock, XCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,7 @@ export function FundingSection({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showContributors, setShowContributors] = useState(false);
+  const [showBankDetails, setShowBankDetails] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -197,6 +198,50 @@ export function FundingSection({
           <p className="mt-1 text-xs text-red-700">
             Your claim was rejected. Please contact an administrator if you believe this is an error.
           </p>
+        </div>
+      )}
+
+      {/* Bank details toggle */}
+      <button
+        type="button"
+        onClick={() => setShowBankDetails(!showBankDetails)}
+        className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/50"
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-muted-foreground">🏦</span>
+          Project Bank Account
+        </span>
+        <ArrowUpRight className={cn("size-4 text-muted-foreground transition-transform", showBankDetails && "rotate-45")} />
+      </button>
+
+      {showBankDetails && (
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+          <p className="text-xs text-muted-foreground">{PROJECT_BANK_DETAILS.note}</p>
+          <div className="grid gap-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Bank:</span>
+              <span className="font-medium">{PROJECT_BANK_DETAILS.bankName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Account:</span>
+              <span className="font-mono font-medium">{PROJECT_BANK_DETAILS.accountNumber}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Title:</span>
+              <span className="font-medium">{PROJECT_BANK_DETAILS.accountName}</span>
+            </div>
+            <div className="border-t border-border pt-1.5 mt-1.5">
+              <p className="text-xs text-muted-foreground mb-1">Mobile wallets:</p>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">EasyPaisa:</span>
+                <span className="font-mono">{PROJECT_BANK_DETAILS.easypaisa}</span>
+              </div>
+              <div className="flex justify-between text-xs mt-0.5">
+                <span className="text-muted-foreground">JazzCash:</span>
+                <span className="font-mono">{PROJECT_BANK_DETAILS.jazzcash}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
