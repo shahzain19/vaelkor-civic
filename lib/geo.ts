@@ -99,7 +99,11 @@ export function offsetCoords(
 export function formatDistance(km: number): string {
   if (!Number.isFinite(km)) return "—";
   // Coarse rounding: never imply precision the privacy model cannot support.
-  if (km < 1) return `${Math.max(50, Math.round(km / 50) * 50)} m`;
+  if (km < 1) {
+    const meters = Math.max(50, Math.round((km * 1000) / 50) * 50);
+    if (meters >= 1000) return "1.0 km";
+    return `${meters} m`;
+  }
   if (km < 10) return `${(Math.round(km * 10) / 10).toFixed(1)} km`;
   return `${Math.round(km)} km`;
 }

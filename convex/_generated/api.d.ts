@@ -13,6 +13,7 @@ import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as errors from "../errors.js";
 import type * as evidence from "../evidence.js";
+import type * as fund from "../fund.js";
 import type * as inspections from "../inspections.js";
 import type * as issues from "../issues.js";
 import type * as lib from "../lib.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   errors: typeof errors;
   evidence: typeof evidence;
+  fund: typeof fund;
   inspections: typeof inspections;
   issues: typeof issues;
   lib: typeof lib;

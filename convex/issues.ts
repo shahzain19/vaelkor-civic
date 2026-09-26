@@ -11,6 +11,7 @@ import {
   logActivity,
   nextCaseNumber,
 } from "./lib";
+import { createFundGoalForIssue } from "./fund";
 import { requireRole } from "./auth";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
@@ -452,6 +453,7 @@ export const confirm = mutation({
           message: `Case verified after ${confirmationCount} confirmations`,
         });
         await createWorkOrderForIssue(ctx, args.issueId, user._id);
+        await createFundGoalForIssue(ctx, args.issueId);
       }
 
       return { confirmationCount };

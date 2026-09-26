@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { formatCents } from "../lib/civic";
 import { v } from "convex/values";
 import { getCurrentUser, requireRole, requireUser } from "./auth";
 import { err, toSafeError } from "./errors";
@@ -110,7 +111,7 @@ export const listMine = query({
  * are serializable, so the loser re-reads `claimed` and is rejected by the
  * transition table rather than overwriting the winner.
  */
-export const accept = mutation({
+export const accept = mutation({ // placeholder
   args: { workOrderId: v.id("workOrders") },
   handler: async (ctx, args) => {
     const contractor = await requireRole(
@@ -125,6 +126,29 @@ export const accept = mutation({
       if (!wo) throw err.notFound("That work order no longer exists.");
       if (wo.status !== "open") {
         throw err.conflict("Another contractor has already taken this work.");
+      }
+
+      // Check if the work order has sufficient funding
+      const goal = await ctx.db
+        .query("fundGoals")
+        .withIndex("by_workOrder", (q) => q.eq("workOrderId", wo._id))
+        .first();
+
+      if (goal) {
+        const contributions = await ctx.db
+          .query("fundContributions")
+          .withIndex("by_issue", (q) => q.eq("issueId", wo.issueId))
+          .collect();
+
+        const totalContributions = contributions.reduce((sum, c) => sum + c.amountCents, 0);
+        const fundingThreshold = goal.targetCents * 0.8; // 80% of the goal
+
+        if (totalContributions < fundingThreshold) {
+          throw err.conflict(
+            `This work order requires at least £${formatCents(fundingThreshold)} in contributions to be claimed. ` +
+            `Current total: £${formatCents(totalContributions)}.`
+          );
+        }
       }
 
       await ctx.db.patch(args.workOrderId, {

@@ -16,9 +16,10 @@ import {
 import { ContactSheet, ProofPair } from "@/components/evidence";
 import { ActionButton, Banner, EmptyState, LiveRegion } from "@/components/feedback";
 import { FileDrop } from "@/components/form";
+import { FundingSection } from "@/components/FundingSection";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD, type Role } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, type Role } from "@/lib/civic";
 import { formatCoord } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -296,41 +297,15 @@ export default function CaseFilePage({
               </div>
             </div>
 
-            {/* Extra citizen evidence, only while the claim is still open. */}
-            {me?.role === "citizen" && !issue.workOrderId && (
-              <div>
-                <h2 className="eyebrow mb-3">Add a photograph</h2>
-                <FileDrop
-                  id="case-photo"
-                  accept="image/*"
-                  capture="environment"
-                  disabled={busy === "photo"}
-                  onSelect={(file) => {
-                    if (!file) return;
-                    void run("photo", async () => {
-                      const uploadUrl = await generateUploadUrl({});
-                      const res = await fetch(uploadUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": file.type || "image/jpeg" },
-                        body: file,
-                      });
-                      if (!res.ok) throw new Error("Upload failed. Try again.");
-                      const { storageId } = (await res.json()) as {
-                        storageId: Id<"_storage">;
-                      };
-                      await attach({ issueId, storageId, kind: "report" });
-                      setNotice({
-                        tone: "success",
-                        text: "Photograph added to the case.",
-                      });
-                    });
-                  }}
-                  emptyLabel="Add a photo of the problem"
+            {/* Funding section, only when there's a work order. */}
+            {issue.workOrderId && (
+              <div className="rounded-[var(--radius)] border border-border bg-card p-4 mt-4">
+                <h2 className="eyebrow mb-3">Fund this work</h2>
+                <FundingSection
+                  issueId={issueId}
+                  goalCents={FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT}
+                  onSuccess={() => setNotice({ tone: "success", text: "Contribution recorded. Thank you." })}
                 />
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  Available until a work order opens. After that, photographs come
-                  from the contractor.
-                </p>
               </div>
             )}
 

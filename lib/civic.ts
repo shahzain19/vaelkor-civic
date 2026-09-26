@@ -218,6 +218,31 @@ export const EVIDENCE_META: Record<
 
 export const CONFIRMATION_THRESHOLD = 3;
 
+/**
+ * The community fund a case must raise before a contractor may claim it.
+ *
+ * In cents, because floating-point money is how people get shortchanged. The
+ * values are per category — a streetlight costs less to fix than a drainage
+ * repair — and they are defaults only. The reporter may propose a different
+ * figure, and an administrator may adjust one (see `oversight.adjustFundGoal`).
+ *
+ * These are pledges, not payments. The app never moves real money; the fund is
+ * a commitment ledger that is released to the contractor on verified
+ * completion. Nothing here is a PCI surface.
+ */
+export const FUND_GOALS: Record<string, number> = {
+  road: 5000,
+  garbage: 2000,
+  drainage: 8000,
+  streetlight: 4000,
+};
+
+/** The default goal for a category the map does not yet know. */
+export const FUND_GOAL_DEFAULT = 5000;
+
+/** Bounds on a single pledge, in cents. */
+export const FUND_CONTRIBUTION = { min: 100, max: 50000 } as const;
+
 /** Work-order priority reuses the same visual language as the status tones. */
 export const PRIORITY_TONE: Record<string, Tone> = {
   high: "broken",
@@ -262,4 +287,18 @@ export const NOTIFICATION_TONE: Record<NotificationKind, Tone> = {
   inspection_passed: "resolved",
   inspection_failed: "broken",
 };
+
+/**
+ * A fund amount, as a short human string.
+ *
+ * Amounts are stored in cents so there is no float drift anywhere in the
+ * ledger; this is the one place they become prose. A whole-pound amount is
+ * shown without a decimal and a partial one with one, which is what a person
+ * actually expects to read when they have chipped in.
+ */
+export function formatCents(cents: number): string {
+  if (!Number.isFinite(cents)) return "—";
+  const pounds = Math.round(cents) / 100;
+  return pounds % 1 === 0 ? `${pounds}` : pounds.toFixed(1);
+}
 

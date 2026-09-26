@@ -38,6 +38,8 @@ export const LIMITS = {
   notificationRead: { max: 120, windowMs: 60 * 60 * 1000 },
   /** Reads that mint signed storage URLs. */
   signedUrls: { max: 300, windowMs: 60 * 60 * 1000 },
+  /** Contributing to the community fund. */
+  fundContribute: { max: 20, windowMs: 60 * 60 * 1000 },
 } as const;
 
 export type LimitName = keyof typeof LIMITS;

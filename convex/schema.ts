@@ -241,6 +241,75 @@ export default defineSchema({
     .index("by_workOrder", ["workOrderId"]),
 
   /**
+   * The target a community fund must reach before a contractor may claim work.
+   *
+   * Minted by `createWorkOrderForIssue` from a category default, and that is
+   * the only write path in Phase 1 — there is no UI surface for setting a goal
+   * yet, so the row cannot drift from the work order it was born from.
+   *
+   * The goal is a property of the *case*, not of the work order, and it is
+   * written before the case moves to `open`. Storing it on the issue rather
+   * than the work order means the dossier can read it without a join, and
+   * means a future reporter override (Phase 4) has a single place to write.
+   */
+  fundGoals: defineTable({
+    issueId: v.id("issues"),
+    workOrderId: v.id("workOrders"),
+    /** The amount the community must raise, in cents. */
+    targetCents: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_issue", ["issueId"])
+    .index("by_workOrder", ["workOrderId"]),
+
+  /**
+   * A community pledge toward a case.
+   *
+   * Append-only and one-per-(user, case). The `by_issue_user` index is what
+   * makes a repeat contribution detectable without a scan, and the uniqueness
+   * is enforced in `contribute` rather than by a unique index — the existing
+   * pattern in this schema (see `confirmations`) is to check in the mutation
+   * so the rejection carries a sentence written for the person making it.
+   *
+   * Contributions are held, not spent. Nothing here records a movement of
+   * money out of the ledger; that is `fundPayouts`, and it happens only on a
+   * verified closure.
+   */
+  fundContributions: defineTable({
+    issueId: v.id("issues"),
+    userId: v.id("users"),
+    /** Pledged amount, in cents. */
+    amountCents: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_issue", ["issueId"])
+    .index("by_issue_user", ["issueId", "userId"]),
+
+  /**
+   * The release of the fund to the contractor.
+   *
+   * Written in the same mutation that moves the case to `closed` (see
+   * `inspections.decide`), so "the case is closed" and "the contractor was
+   * paid" are one fact rather than two that can drift. If the transition
+   * below is rejected the whole mutation rolls back and the payout is
+   * unwritten with it.
+   *
+   * This is the only place money leaves the ledger, and the only place it can
+   * leave. There is no refund path and no partial release.
+   */
+  fundPayouts: defineTable({
+    issueId: v.id("issues"),
+    workOrderId: v.id("workOrders"),
+    inspectionId: v.id("inspections"),
+    contractorId: v.id("users"),
+    /** Released amount, in cents. Must equal the goal at closure. */
+    amountCents: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_issue", ["issueId"])
+    .index("by_workOrder", ["workOrderId"]),
+
+  /**
    * In-app notifications.
    *
    * Written in the same mutation as the lifecycle transition that caused them,
