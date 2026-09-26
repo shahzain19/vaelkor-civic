@@ -26,7 +26,15 @@ export function FundingSection({
   const contribute = useMutation(api.fund.contribute);
   const fundData = useQuery(api.fund.fund, { issueId: typedIssueId });
   
-  const totalRaised = fundData?.totalCents || 0;
+  if (!fundData) {
+    return (
+      <div className="rounded-[var(--radius)] border border-border bg-card p-4">
+        <p className="text-sm text-muted-foreground">Loading funding information...</p>
+      </div>
+    );
+  }
+
+  const totalRaised = fundData.totalCents;
   const formattedGoal = formatCents(goalCents);
   const formattedTotal = formatCents(totalRaised);
   

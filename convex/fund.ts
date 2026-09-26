@@ -79,7 +79,6 @@ export const fund = query({
         contributorName: users[i]?.name ?? "Unknown",
       })),
       funderCount: contributions.length,
-      formatCents: (c: number) => formatCents(c),
     };
   },
 });
