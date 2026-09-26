@@ -12,7 +12,16 @@
  * Anything thrown that is *not* an `AppError` is treated as a bug and replaced
  * with a generic message by `toSafeError`, so a future regression in a Convex
  * internal cannot start leaking to users.
+ *
+ * `AppError` extends `ConvexError` rather than `Error` on purpose. Convex
+ * decides whether the client sees an expected application error or a crashed
+ * function by checking the `Symbol.for("ConvexError")` marker. A plain `Error`
+ * makes every routine business rejection — a duplicate report, a rate limit, an
+ * illegal transition — surface as `Uncaught AppError` in the dashboard and send
+ * the user a server error page instead of the sentence we wrote for them.
  */
+
+import { ConvexError } from "convex/values";
 
 export type AppErrorCode =
   | "unauthenticated"
@@ -29,16 +38,32 @@ export type AppErrorCode =
   | "precondition_failed"
   | "internal";
 
-export class AppError extends Error {
+/**
+ * The payload that reaches the client. A `type` alias rather than an interface
+ * because Convex's `Value` requires an implicit index signature, which only
+ * aliases get.
+ */
+export type AppErrorData = {
+  code: AppErrorCode;
+  message: string;
+  retryAfter?: number;
+};
+
+export class AppError extends ConvexError<AppErrorData> {
   readonly code: AppErrorCode;
   /** Seconds the client should wait, for `rate_limited`. */
   readonly retryAfter?: number;
 
   constructor(code: AppErrorCode, message: string, retryAfter?: number) {
-    super(message);
+    // `data` is what reaches the client, so the UI can branch on `code` and
+    // render a countdown without parsing prose.
+    super(retryAfter === undefined ? { code, message } : { code, message, retryAfter });
     this.name = "AppError";
     this.code = code;
     this.retryAfter = retryAfter;
+    // ConvexError stringifies `data` into `.message`; the product needs the
+    // human sentence a user can actually read.
+    this.message = message;
   }
 }
 

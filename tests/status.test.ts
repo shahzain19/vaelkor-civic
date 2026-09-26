@@ -177,6 +177,43 @@ describe("status: illegal transitions are refused", () => {
     ).rejects.toThrow(/not awaiting inspection/i);
   });
 
+  it("requires work to be started before completion can be submitted", async () => {
+    // Regression: the contractor screen once offered "Submit for inspection"
+    // while the order was still `claimed`, so a click landed on this refusal
+    // instead of doing anything useful.
+    const t = setup();
+    const reporter = await makeUser(t, "citizen");
+    const workOrderId = await reachVerified(t, reporter);
+    const issueId = (await readWorkOrder(t, workOrderId))!.issueId;
+    const contractor = await makeUser(t, "contractor");
+
+    await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
+    await as(contractor)(t).mutation(api.evidence.attach, {
+      issueId,
+      kind: "before",
+      storageId: await storeImage(t),
+    });
+    await as(contractor)(t).mutation(api.evidence.attach, {
+      issueId,
+      kind: "after",
+      storageId: await storeImage(t),
+    });
+
+    // Complete proof, but the work was never started.
+    await expect(
+      as(contractor)(t).mutation(api.workOrders.submitCompletion, { workOrderId }),
+    ).rejects.toThrow(/claimed cannot move to completion submitted/i);
+
+    // The refusal left the case exactly where it was.
+    expect((await readWorkOrder(t, workOrderId))?.status).toBe("claimed");
+    expect((await readIssue(t, issueId))?.status).toBe("claimed");
+
+    // The documented sequence works.
+    await as(contractor)(t).mutation(api.workOrders.start, { workOrderId });
+    await as(contractor)(t).mutation(api.workOrders.submitCompletion, { workOrderId });
+    expect((await readWorkOrder(t, workOrderId))?.status).toBe("completion_submitted");
+  });
+
   it("refuses a second claim on an already claimed order", async () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");

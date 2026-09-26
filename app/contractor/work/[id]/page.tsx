@@ -293,26 +293,39 @@ export default function ExecutionWorkspacePage({
                   Mark work in progress
                 </ActionButton>
               )}
-              <ActionButton
-                pending={busy === "submit"}
-                pendingLabel="Submitting…"
-                onClick={() =>
-                  void act("submit", async () => {
-                    await submitCompletion({ workOrderId });
-                    return "Completion submitted. It is now in the inspection queue.";
-                  })
-                }
-                blockedReason={
-                  missing.length > 0
-                    ? `Upload your own ${missing.join(" and ")} ${
-                        missing.length === 1 ? "photograph" : "photographs"
-                      } first — an inspector compares them to decide.`
-                    : null
-                }
-              >
-                Submit for inspection
-              </ActionButton>
+              {/*
+                Only offered from `in_progress`. The status machine has no
+                `claimed -> completion_submitted` edge, so showing this button
+                any earlier let the contractor click straight into a refusal.
+              */}
+              {data.status === "in_progress" && (
+                <ActionButton
+                  pending={busy === "submit"}
+                  pendingLabel="Submitting…"
+                  onClick={() =>
+                    void act("submit", async () => {
+                      await submitCompletion({ workOrderId });
+                      return "Completion submitted. It is now in the inspection queue.";
+                    })
+                  }
+                  blockedReason={
+                    missing.length > 0
+                      ? `Upload your own ${missing.join(" and ")} ${
+                          missing.length === 1 ? "photograph" : "photographs"
+                        } first — an inspector compares them to decide.`
+                      : null
+                  }
+                >
+                  Submit for inspection
+                </ActionButton>
+              )}
             </div>
+            {data.status === "claimed" && (
+              <p className="mt-3 text-[0.875rem] leading-relaxed text-muted-foreground">
+                Mark the work in progress before you can submit it for
+                inspection.
+              </p>
+            )}
           </div>
         </Section>
       )}
