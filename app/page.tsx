@@ -1,69 +1,347 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useConvexAuth, useQuery } from "convex/react";
+import {
+  ArrowRight,
+  Camera,
+  FileCheck2,
+  Gavel,
+  HardHat,
+  MapPin,
+  ShieldCheck,
+  UserCheck,
+  Users,
+} from "lucide-react";
+import { api } from "@/convex/_generated/api";
+import { CaseLedger } from "@/components/case-list";
+import { Skeleton } from "@/components/feedback";
+import { PageShell, Section } from "@/components/shell";
+import { buttonVariants } from "@/components/ui/button";
+import { CONFIRMATION_THRESHOLD, PHASES } from "@/lib/civic";
+import {
+  LOCATION_PRIVACY_QUERY_M,
+  LOCATION_PRIVACY_STORE_M,
+} from "@/lib/geo";
+import { cn } from "@/lib/utils";
+
+/**
+ * Roles. Every line here is enforced by the server, not by the interface — the
+ * page states the boundary so nobody has to discover it by hitting an error.
+ */
+const ROLES = [
+  {
+    role: "citizen" as const,
+    label: "Citizen",
+    icon: Users,
+    can: "Report a fault with a photo, confirm reports from other people, add more evidence later.",
+    cannot: "Accept work orders or close a case.",
+    href: "/report",
+  },
+  {
+    role: "contractor" as const,
+    label: "Contractor",
+    icon: HardHat,
+    can: "Accept open work orders, file before and after photographs, submit completion for review.",
+    cannot: "Confirm reports or decide an inspection.",
+    href: "/contractor",
+  },
+  {
+    role: "inspector" as const,
+    label: "Inspector",
+    icon: Gavel,
+    can: "Compare before and after evidence against a checklist, then pass or fail each case.",
+    cannot: "Accept work or file execution evidence.",
+    href: "/inspect",
+  },
+];
+
+/** The anti-fraud rules. Each one corresponds to a server-side check. */
+const RULES = [
+  {
+    icon: Camera,
+    title: "A report needs a photograph",
+    body: "No image, no case. The first photograph is part of the record, not an attachment to it.",
+  },
+  {
+    icon: UserCheck,
+    title: `Three people confirm before work is ordered`,
+    body: `A case becomes actionable at ${CONFIRMATION_THRESHOLD} independent confirmations, and one person can only confirm once.`,
+  },
+  {
+    icon: ShieldCheck,
+    title: "Confirmations freeze once work starts",
+    body: "The moment a work order exists the count locks, so a popular case cannot be inflated into urgency.",
+  },
+  {
+    icon: HardHat,
+    title: "Only the assigned contractor can file proof",
+    body: "Before and after evidence is rejected from anyone who does not hold that specific work order.",
+  },
+  {
+    icon: FileCheck2,
+    title: "Nothing closes without an inspector",
+    body: "Completion moves a case to inspection, never to closed. An inspector records the decision, and cannot file the work evidence they are judging.",
+  },
+];
+
+export default function LandingPage() {
+  const { isAuthenticated } = useConvexAuth();
+  const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
+  const recent = useQuery(api.issues.listRecent, { limit: 4 });
+
+  const workspace = ROLES.find((r) => r.role === me?.role)?.href;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <PageShell width="wide">
+      {/* Masthead. The lifecycle sits beside the headline rather than under a
+          slogan, so a first-time visitor reads how the product actually works
+          before deciding anything. */}
+      <div className="grid gap-10 pt-12 pb-4 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-16 lg:pb-8">
+        <div className="max-w-[46ch]">
+          <div className="eyebrow mb-3">Municipal fault reporting</div>
+          <h1 className="text-[2.1rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.9rem]">
+            Street faults, reported, proven, and signed off in public.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+          <p className="mt-5 text-[1.0625rem] leading-relaxed text-muted-foreground text-pretty">
+            Anyone can report what is broken. Neighbours confirm it. The work is
+            ordered, photographed before and after, and closed by an inspector
+            who never touched the tools. Every step is on the record.
+          </p>
+
+          <div className="mt-7 flex flex-wrap items-center gap-2.5">
+            <Link href="/report" className={buttonVariants({ size: "lg" })}>
+              Report a problem
+              <ArrowRight />
+            </Link>
+            <Link
+              href="/ledger"
+              className={buttonVariants({ size: "lg", variant: "outline" })}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              Open the ledger
+            </Link>
+          </div>
+
+          <p className="mt-4 text-[0.8125rem] text-muted-foreground">
+            No account needed to read the ledger. Reporting takes a photo and a
+            location.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* The chain, as a numbered record. */}
+        <div className="lg:pt-1">
+          <h2 className="eyebrow mb-3">The chain of custody</h2>
+          <ol className="border-t border-border">
+            {PHASES.map((p, i) => (
+              <li
+                key={p.key}
+                className="flex gap-3.5 border-b border-border py-3"
+              >
+                <span className="mt-px shrink-0 font-mono text-[0.75rem] text-muted-foreground tabular-nums">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.875rem] font-medium">
+                    {p.label}
+                  </span>
+                  <span className="mt-0.5 block text-[0.8125rem] leading-relaxed text-muted-foreground">
+                    {p.blurb}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {/* Live cases. Real rows from the database rather than a mock screenshot,
+          so the landing page cannot drift away from the product. */}
+      <Section
+        label="From the ledger"
+        aside={
+          <Link
+            href="/ledger"
+            className="inline-flex items-center gap-1 text-[0.8125rem] font-medium text-foreground hover:underline"
+          >
+            All cases
+            <ArrowRight className="size-3.5" />
+          </Link>
+        }
+      >
+        {recent === undefined ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-14 w-full" />
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
+          <p className="text-[0.9375rem] text-muted-foreground">
+            No cases have been reported yet. The first one is yours to file.
+          </p>
+        ) : (
+          <>
+            <CaseLedger issues={recent} />
+            <p className="mt-3 text-xs text-muted-foreground">
+              Case numbers are permanent. Nothing is deleted from the record.
+            </p>
+          </>
+        )}
+      </Section>
+
+      {/* Roles as a permissions ledger, not three feature cards. */}
+      <Section
+        label="Who does what"
+        aside={
+          isAuthenticated && !workspace ? (
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-1 text-[0.8125rem] font-medium text-status-confirmed hover:underline"
+            >
+              Choose your role
+              <ArrowRight className="size-3.5" />
+            </Link>
+          ) : undefined
+        }
+      >
+        <div className="border-t border-border">
+          {ROLES.map((r) => {
+            const Icon = r.icon;
+            return (
+              <div
+                key={r.role}
+                className="grid gap-x-6 gap-y-2 border-b border-border py-4 lg:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1fr)_7rem] lg:items-baseline"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className="size-3.5 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                  <span className="text-[0.9375rem] font-medium">{r.label}</span>
+                </div>
+                <p className="text-[0.875rem] leading-relaxed">{r.can}</p>
+                <p className="text-[0.875rem] leading-relaxed text-muted-foreground">
+                  <span className="lg:sr-only">Cannot </span>
+                  {r.cannot}
+                </p>
+                <div className="lg:text-right">
+                  <Link
+                    href={r.href}
+                    className="inline-flex items-center gap-1 text-[0.8125rem] font-medium text-foreground hover:underline"
+                  >
+                    {isAuthenticated && me?.role === r.role ? "Open" : "View"}
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
+      <Section label="Why a case can be trusted">
+        <ol className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+          {RULES.map((rule, i) => {
+            const Icon = rule.icon;
+            return (
+              <li key={rule.title} className="flex gap-3.5">
+                <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-border">
+                  <Icon className="size-3.5 text-foreground" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[0.875rem] font-medium">
+                    {rule.title}
+                  </span>
+                  <span className="mt-1 block text-[0.8125rem] leading-relaxed text-muted-foreground text-pretty">
+                    {rule.body}
+                  </span>
+                  <span className="sr-only">Rule {i + 1}.</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </Section>
+
+      {/* Privacy stated as verifiable constants, imported from the same module
+          the geolocation hook uses, so the claim cannot go stale. */}
+      <Section label="Your location">
+        <div className="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+          <p className="text-[0.9375rem] leading-relaxed text-pretty">
+            Reporting a fault necessarily involves a place. It does not
+            necessarily involve your address, and it never involves handing your
+            phone&rsquo;s raw position to a server.
+          </p>
+          <ul className="space-y-3.5">
+            <li className="flex gap-3">
+              <MapPin
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <p className="text-[0.875rem] leading-relaxed">
+                Your raw GPS reading stays in a browser variable and is never
+                uploaded.
+              </p>
+            </li>
+            <li className="flex gap-3">
+              <MapPin
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <p className="text-[0.875rem] leading-relaxed">
+                The pin stored on a case is randomly shifted by up to{" "}
+                <span className="font-mono text-foreground">
+                  {LOCATION_PRIVACY_STORE_M} m
+                </span>
+                , so it points at the fault, not at your door.
+              </p>
+            </li>
+            <li className="flex gap-3">
+              <MapPin
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <p className="text-[0.875rem] leading-relaxed">
+                &ldquo;Cases near me&rdquo; searches from a point shifted by up to{" "}
+                <span className="font-mono text-foreground">
+                  {LOCATION_PRIVACY_QUERY_M} m
+                </span>
+                . The distances you see are still measured from your real
+                position, on your device.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </Section>
+
+      <Section label="Start">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-[44ch] text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">
+            {workspace
+              ? `You are set up as ${me?.role}. Your workspace is one click away, and the ledger stays public.`
+              : "Read the ledger without an account. File a report when you see something wrong — it takes a photo."}
+          </p>
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+            {workspace && (
+              <Link href={workspace} className={buttonVariants({ size: "lg" })}>
+                Go to my workspace
+                <ArrowRight />
+              </Link>
+            )}
+            {!workspace && (
+              <Link href="/report" className={buttonVariants({ size: "lg" })}>
+                Report a problem
+                <ArrowRight />
+              </Link>
+            )}
+            <Link
+              href="/ledger"
+              className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
+            >
+              Open the ledger
+            </Link>
+          </div>
+        </div>
+      </Section>
+    </PageShell>
   );
 }

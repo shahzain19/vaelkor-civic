@@ -1,26 +1,217 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@clerk/ui/themes/shadcn.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  VAELKOR CIVIC — "civic ledger" design tokens.
+
+  The page is a document, not a dashboard. Rules and whitespace divide
+  sections; nothing floats. The interface is deliberately achromatic so that
+  the only saturated colour on screen is a lifecycle status, which makes
+  status meaningful at a glance instead of decorative.
+*/
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Paper. The canvas is slightly off-white so white surfaces read as
+     layered without needing a shadow. */
+  --background: oklch(0.982 0.002 265);
+  --foreground: oklch(0.19 0.005 265);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.005 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.005 265);
+
+  /* Ink, not colour. Primary actions are near-black. */
+  --primary: oklch(0.21 0.006 265);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.955 0.003 265);
+  --secondary-foreground: oklch(0.28 0.006 265);
+
+  --muted: oklch(0.965 0.002 265);
+  --muted-foreground: oklch(0.505 0.012 265);
+
+  --accent: oklch(0.945 0.003 265);
+  --accent-foreground: oklch(0.21 0.006 265);
+
+  --destructive: oklch(0.545 0.19 27);
+
+  /* Hairlines. Two weights: `border` for rules, `input` for controls that
+     need to look interactive. */
+  --border: oklch(0.912 0.003 265);
+  --input: oklch(0.855 0.004 265);
+  --ring: oklch(0.55 0.16 255);
+
+  --radius: 0.375rem;
+
+  /* Height of the sticky header. It is two rows on small screens (wordmark +
+     auth, then nav) and one row from `sm`, so sticky toolbars must read this
+     instead of hard-coding an offset. */
+  --header-h: 5rem;
+
+  --chart-1: oklch(0.55 0.14 250);
+  --chart-2: oklch(0.5 0.16 300);
+  --chart-3: oklch(0.48 0.12 155);
+  --chart-4: oklch(0.55 0.13 60);
+  --chart-5: oklch(0.545 0.19 27);
+
+  --sidebar: oklch(0.985 0.002 265);
+  --sidebar-foreground: oklch(0.19 0.005 265);
+  --sidebar-primary: oklch(0.21 0.006 265);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.945 0.003 265);
+  --sidebar-accent-foreground: oklch(0.21 0.006 265);
+  --sidebar-border: oklch(0.912 0.003 265);
+  --sidebar-ring: oklch(0.55 0.16 255);
+
+  @media (width >= 40rem) {
+    :root {
+      --header-h: 3.5rem;
+    }
+  }
+
+  /* Lifecycle tones. Mirrors the public infrastructure map legend. Each is
+     dark enough to sit on white as text (>= 4.5:1). */
+  --status-broken: oklch(0.545 0.2 27);
+  --status-confirmed: oklch(0.53 0.12 55);
+  --status-active: oklch(0.5 0.14 250);
+  --status-inspection: oklch(0.5 0.16 300);
+  --status-resolved: oklch(0.47 0.11 158);
+}
+
+.dark {
+  --background: oklch(0.17 0.005 265);
+  --foreground: oklch(0.96 0.002 265);
+  --card: oklch(0.21 0.006 265);
+  --card-foreground: oklch(0.96 0.002 265);
+  --popover: oklch(0.21 0.006 265);
+  --popover-foreground: oklch(0.96 0.002 265);
+  --primary: oklch(0.96 0.002 265);
+  --primary-foreground: oklch(0.19 0.005 265);
+  --secondary: oklch(0.26 0.007 265);
+  --secondary-foreground: oklch(0.96 0.002 265);
+  --muted: oklch(0.24 0.006 265);
+  --muted-foreground: oklch(0.68 0.012 265);
+  --accent: oklch(0.27 0.007 265);
+  --accent-foreground: oklch(0.96 0.002 265);
+  --destructive: oklch(0.65 0.18 27);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.7 0.14 255);
+  --sidebar: oklch(0.19 0.005 265);
+  --sidebar-foreground: oklch(0.96 0.002 265);
+  --sidebar-primary: oklch(0.96 0.002 265);
+  --sidebar-primary-foreground: oklch(0.19 0.005 265);
+  --sidebar-accent: oklch(0.27 0.007 265);
+  --sidebar-accent-foreground: oklch(0.96 0.002 265);
+  --sidebar-border: oklch(1 0 0 / 11%);
+  --sidebar-ring: oklch(0.7 0.14 255);
+
+  --status-broken: oklch(0.7 0.17 27);
+  --status-confirmed: oklch(0.76 0.13 65);
+  --status-active: oklch(0.68 0.13 250);
+  --status-inspection: oklch(0.7 0.14 300);
+  --status-resolved: oklch(0.72 0.14 158);
 }
 
 @theme inline {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", monospace;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-status-broken: var(--status-broken);
+  --color-status-confirmed: var(--status-confirmed);
+  --color-status-active: var(--status-active);
+  --color-status-inspection: var(--status-inspection);
+  --color-status-resolved: var(--status-resolved);
+
+  --radius-sm: calc(var(--radius) * 0.66);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.33);
+  --radius-xl: calc(var(--radius) * 1.75);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv05" 1, "ss01" 1;
+  }
+
+  /* One visible focus treatment everywhere, keyboard-only. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Identifiers, counts, coordinates and timestamps are read as data, so they
+     get tabular figures to stop columns jittering. */
+  .font-mono,
+  [class*="font-mono"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    @apply bg-foreground text-background;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Section eyebrow. Replaces card headers so blocks read as one document. */
+  .eyebrow {
+    @apply text-[0.6875rem] leading-none font-semibold tracking-[0.09em] text-muted-foreground uppercase;
+  }
+
+  /* Segmented control track for filters. */
+  .seg {
+    @apply inline-flex items-center gap-0.5 rounded-[var(--radius)] border border-border bg-muted/60 p-0.5;
+  }
+
+  .seg-item {
+    @apply rounded-[calc(var(--radius)-2px)] px-2.5 py-1 text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground;
+  }
+
+  .seg-item[data-active="true"] {
+    @apply bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06)];
+  }
 }
