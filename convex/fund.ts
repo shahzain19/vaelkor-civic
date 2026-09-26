@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { FUND_CONTRIBUTION, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, formatCents } from "../lib/civic";
+import { FUND_CONTRIBUTION, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, PAYMENT_METHODS, formatCents } from "../lib/civic";
 import { requireRole, requireUser } from "./auth";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
@@ -70,6 +70,23 @@ export const fund = query({
       contributions.map((c) => ctx.db.get(c.userId)),
     );
 
+    // Count pending claims for this issue
+    const pendingClaims = await ctx.db
+      .query("fundClaims")
+      .withIndex("by_issue_status", (q) => q.eq("issueId", args.issueId).eq("status", "pending"))
+      .collect();
+
+    // Fetch pending claim details with user info
+    const pendingClaimsWithUsers = await Promise.all(
+      pendingClaims.map(async (claim) => {
+        const user = await ctx.db.get(claim.userId);
+        return {
+          ...claim,
+          claimantName: user?.name ?? "Unknown",
+        };
+      }),
+    );
+
     return {
       goalCents: goal?.targetCents ?? null,
       totalCents,
@@ -79,6 +96,8 @@ export const fund = query({
         contributorName: users[i]?.name ?? "Unknown",
       })),
       funderCount: contributions.length,
+      pendingClaimCount: pendingClaims.length,
+      pendingClaims: pendingClaimsWithUsers,
     };
   },
 });
@@ -164,6 +183,225 @@ export const contribute = mutation({
         contributionId,
         already: false,
       };
+    } catch (e) {
+      throw toSafeError(e);
+    }
+  },
+});
+
+/**
+ * Returns the current user's claim status for a specific issue.
+ *
+ * Used by the case page to show the right UI state without extra round-trips.
+ */
+export const getMyClaim = query({
+  args: { issueId: v.id("issues") },
+  handler: async (ctx, args) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) return null;
+    const convexUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", user.subject))
+      .first();
+    if (!convexUser) return null;
+
+    const approved = await ctx.db
+      .query("fundContributions")
+      .withIndex("by_issue_user", (q) =>
+        q.eq("issueId", args.issueId).eq("userId", convexUser._id),
+      )
+      .unique();
+    if (approved) {
+      return { status: "approved" as const, amountCents: approved.amountCents };
+    }
+
+    const pending = await ctx.db
+      .query("fundClaims")
+      .withIndex("by_issue_status", (q) =>
+        q.eq("issueId", args.issueId).eq("status", "pending"),
+      )
+      .collect();
+    const myPending = pending.find((c) => c.userId === convexUser._id);
+    if (myPending) {
+      return { status: "pending" as const, amountCents: myPending.amountCents };
+    }
+
+    const rejected = await ctx.db
+      .query("fundClaims")
+      .withIndex("by_issue", (q) => q.eq("issueId", args.issueId))
+      .collect();
+    const myRejected = rejected.find(
+      (c) => c.userId === convexUser._id && c.status === "rejected",
+    );
+    if (myRejected) {
+      return { status: "rejected" as const, amountCents: myRejected.amountCents };
+    }
+
+    return { status: "none" as const };
+  },
+});
+
+/* Payment claims ----------------------------------------------------------- */
+
+export const submitClaim = mutation({
+  args: {
+    issueId: v.id("issues"),
+    amountCents: v.number(),
+    paymentMethod: v.string(),
+    screenshotStorageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRole(ctx, "citizen", "Only citizens can submit payment claims");
+    await enforceRateLimit(ctx, "fundContribute", user._id);
+
+    try {
+      if (!Number.isInteger(args.amountCents)) {
+        throw err.invalid("Claim amount must be a whole number of cents.");
+      }
+      if (args.amountCents < FUND_CONTRIBUTION.min) {
+        throw err.invalid(`Minimum claim is ${formatCents(FUND_CONTRIBUTION.min)}.`);
+      }
+      if (args.amountCents > FUND_CONTRIBUTION.max) {
+        throw err.invalid(`Maximum claim is ${formatCents(FUND_CONTRIBUTION.max)}.`);
+      }
+      if (!PAYMENT_METHODS.includes(args.paymentMethod as typeof PAYMENT_METHODS[number])) {
+        throw err.invalid("Invalid payment method. Choose bank_transfer, easypaisa, or jazzcash.");
+      }
+
+      const issue = await ctx.db.get(args.issueId);
+      if (!issue) throw err.notFound("That case no longer exists.");
+      if (issue.status === "closed") throw err.conflict("This case is closed.");
+
+      const workOrder = issue.workOrderId ? await ctx.db.get(issue.workOrderId) : null;
+      if (!workOrder) {
+        throw err.precondition("A work order must exist before you can claim a contribution.");
+      }
+      if (workOrder.status !== "open") {
+        throw err.conflict("Contributions are closed once a contractor claims the work.");
+      }
+
+      // One pending claim per user per case
+      const existing = await ctx.db
+        .query("fundClaims")
+        .withIndex("by_issue_status", (q) => q.eq("issueId", args.issueId).eq("status", "pending"))
+        .collect();
+      const myPending = existing.find((c) => c.userId === user._id);
+      if (myPending) {
+        throw err.conflict("You already have a pending claim for this case. Wait for it to be reviewed.");
+      }
+
+      // Also block if already approved
+      const approved = await ctx.db
+        .query("fundContributions")
+        .withIndex("by_issue_user", (q) => q.eq("issueId", args.issueId).eq("userId", user._id))
+        .unique();
+      if (approved) {
+        throw err.conflict("You have already been credited for this case.");
+      }
+
+      const now = Date.now();
+      const claimId = await ctx.db.insert("fundClaims", {
+        issueId: args.issueId,
+        userId: user._id,
+        amountCents: args.amountCents,
+        paymentMethod: args.paymentMethod,
+        screenshotStorageId: args.screenshotStorageId,
+        status: "pending" as const,
+        createdAt: now,
+      });
+
+      await ctx.db.insert("activityLogs", {
+        issueId: args.issueId,
+        actorId: user._id,
+        action: "claim_submitted",
+        message: `${user.name} submitted a payment claim of ${formatCents(args.amountCents)} — awaiting admin approval.`,
+        createdAt: now,
+      });
+
+      return { claimId };
+    } catch (e) {
+      throw toSafeError(e);
+    }
+  },
+});
+
+export const approveClaim = mutation({
+  args: {
+    claimId: v.id("fundClaims"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, "admin", "Only administrators can approve claims");
+
+    try {
+      const claim = await ctx.db.get(args.claimId);
+      if (!claim) throw err.notFound("Claim not found.");
+      if (claim.status !== "pending") throw err.conflict("This claim has already been reviewed.");
+
+      const now = Date.now();
+
+      // Convert to a real contribution
+      await ctx.db.insert("fundContributions", {
+        issueId: claim.issueId,
+        userId: claim.userId,
+        amountCents: claim.amountCents,
+        createdAt: now,
+      });
+
+      await ctx.db.patch(args.claimId, {
+        status: "approved" as const,
+        reviewedAt: now,
+        reviewerId: admin._id,
+        adminNote: args.note,
+      });
+
+      const contributor = await ctx.db.get(claim.userId);
+      await ctx.db.insert("activityLogs", {
+        issueId: claim.issueId,
+        actorId: admin._id,
+        action: "claim_approved",
+        message: `${admin.name} approved ${contributor?.name ?? "a citizen"}'s claim of ${formatCents(claim.amountCents)}.`,
+        createdAt: now,
+      });
+
+      return { success: true };
+    } catch (e) {
+      throw toSafeError(e);
+    }
+  },
+});
+
+export const rejectClaim = mutation({
+  args: {
+    claimId: v.id("fundClaims"),
+    note: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, "admin", "Only administrators can reject claims");
+
+    try {
+      const claim = await ctx.db.get(args.claimId);
+      if (!claim) throw err.notFound("Claim not found.");
+      if (claim.status !== "pending") throw err.conflict("This claim has already been reviewed.");
+
+      const now = Date.now();
+      await ctx.db.patch(args.claimId, {
+        status: "rejected" as const,
+        reviewedAt: now,
+        reviewerId: admin._id,
+        adminNote: args.note,
+      });
+
+      const contributor = await ctx.db.get(claim.userId);
+      await ctx.db.insert("activityLogs", {
+        issueId: claim.issueId,
+        actorId: admin._id,
+        action: "claim_rejected",
+        message: `${admin.name} rejected ${contributor?.name ?? "a citizen"}'s claim: ${args.note}`,
+        createdAt: now,
+      });
+
+      return { success: true };
     } catch (e) {
       throw toSafeError(e);
     }

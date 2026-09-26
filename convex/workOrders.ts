@@ -141,13 +141,18 @@ export const accept = mutation({ // placeholder
           .collect();
 
         const totalContributions = contributions.reduce((sum, c) => sum + c.amountCents, 0);
-        const fundingThreshold = goal.targetCents * 0.8; // 80% of the goal
 
-        if (totalContributions < fundingThreshold) {
-          throw err.conflict(
-            `This work order requires at least PKR ${formatCents(fundingThreshold)} in contributions to be claimed. ` +
-            `Current total: PKR ${formatCents(totalContributions)}.`
-          );
+        // Only enforce the threshold if contributions have actually been made.
+        // If no one has contributed yet, allow claiming so the fund can start.
+        if (totalContributions > 0) {
+          const fundingThreshold = goal.targetCents * 0.8; // 80% of the goal
+
+          if (totalContributions < fundingThreshold) {
+            throw err.conflict(
+              `This work order requires at least PKR ${formatCents(fundingThreshold)} in contributions to be claimed. ` +
+              `Current total: PKR ${formatCents(totalContributions)}.`
+            );
+          }
         }
       }
 

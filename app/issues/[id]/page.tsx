@@ -37,10 +37,15 @@ export default function CaseFilePage({
   const confirm = useMutation(api.issues.confirm);
   const generateUploadUrl = useMutation(api.evidence.generateUploadUrl);
   const attach = useMutation(api.evidence.attach);
+  const adjustGoal = useMutation(api.fund.adjustGoal);
+  const myClaim = useQuery(api.fund.getMyClaim, isAuthenticated ? { issueId } : "skip");
 
 
   const [busy, setBusy] = useState<null | "confirm" | "photo" | "adjustGoal">(null);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
+  // Derive claim status directly from the query result — no effect needed.
+  const claimStatus = myClaim?.status ?? "none" as "none" | "pending" | "approved" | "rejected";
+  const claimAmount = myClaim?.amountCents;
 
   if (issue === undefined) return <CaseSkeleton />;
   if (issue === null) {
@@ -305,7 +310,11 @@ export default function CaseFilePage({
                 <FundingSection
                   issueId={issueId}
                   goalCents={issue.fundGoal?.targetCents ?? FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT}
-                  onSuccess={() => setNotice({ tone: "success", text: "Contribution recorded. Thank you." })}
+                  myClaimStatus={claimStatus}
+                  myClaimAmount={claimAmount}
+                  onSuccess={() => {
+                    setNotice({ tone: "success", text: "Your claim has been submitted. It will be reviewed by an administrator." });
+                  }}
                 />
                 {me?.role === "admin" && issue.fundGoal && (
                   <AdminGoalAdjust

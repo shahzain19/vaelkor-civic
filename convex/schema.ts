@@ -265,15 +265,10 @@ export default defineSchema({
   /**
    * A community pledge toward a case.
    *
-   * Append-only and one-per-(user, case). The `by_issue_user` index is what
-   * makes a repeat contribution detectable without a scan, and the uniqueness
-   * is enforced in `contribute` rather than by a unique index — the existing
-   * pattern in this schema (see `confirmations`) is to check in the mutation
-   * so the rejection carries a sentence written for the person making it.
-   *
-   * Contributions are held, not spent. Nothing here records a movement of
-   * money out of the ledger; that is `fundPayouts`, and it happens only on a
-   * verified closure.
+   * Written only after an admin approves a `fundClaim`. One approved claim per
+   * (user, case). Contributions are held, not spent. Nothing here records a
+   * movement of money out of the ledger; that is `fundPayouts`, and it happens
+   * only on a verified closure.
    */
   fundContributions: defineTable({
     issueId: v.id("issues"),
@@ -284,6 +279,37 @@ export default defineSchema({
   })
     .index("by_issue", ["issueId"])
     .index("by_issue_user", ["issueId", "userId"]),
+
+  /**
+   * A pending payment claim from a citizen who has sent money via bank transfer,
+   * EasyPaisa, or JazzCash and uploaded a screenshot as proof.
+   *
+   * Admins review and approve (or reject) these. On approval the claim is
+   * converted into a `fundContributions` row. This keeps the app free of any
+   * payment-processing surface while still recording real money coming in.
+   */
+  fundClaims: defineTable({
+    issueId: v.id("issues"),
+    userId: v.id("users"),
+    /** Amount the claimant says they sent, in cents. */
+    amountCents: v.number(),
+    /** How they paid: bank transfer, EasyPaisa, or JazzCash. */
+    paymentMethod: v.string(),
+    /** Screenshot of the payment confirmation from storage. */
+    screenshotStorageId: v.id("_storage"),
+    /** Status of this claim. */
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    /** Optional note from the admin on approval/rejection. */
+    adminNote: v.optional(v.string()),
+    createdAt: v.number(),
+    /** Set when the claim is reviewed. */
+    reviewedAt: v.optional(v.number()),
+    /** The admin who reviewed it. */
+    reviewerId: v.optional(v.id("users")),
+  })
+    .index("by_issue", ["issueId"])
+    .index("by_user", ["userId"])
+    .index("by_issue_status", ["issueId", "status"]),
 
   /**
    * The release of the fund to the contractor.

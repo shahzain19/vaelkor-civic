@@ -52,6 +52,20 @@ export async function reachVerified(
   return issue.workOrderId;
 }
 
+/**
+ * Brings a case to a stage where fund claims can be submitted — i.e. a work
+ * order exists and is still open. Returns both ids so callers can refer to
+ * either the case or the order.
+ */
+export async function reachFundingStage(
+  t: Harness,
+  reporter: TestUser,
+): Promise<{ issueId: Id<"issues">; workOrderId: Id<"workOrders"> }> {
+  const workOrderId = await reachVerified(t, reporter);
+  const issueId = await t.run((ctx) => ctx.db.get(workOrderId).then((w) => w!.issueId));
+  return { issueId, workOrderId };
+}
+
 /** Drives a case all the way to `completion_submitted`. */
 export async function reachAwaitingInspection(
   t: Harness,

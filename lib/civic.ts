@@ -246,6 +246,10 @@ export const FUND_CONTRIBUTION = { min: 100, max: 50000 } as const;
 /** Maximum allowable fund goal for any case, in cents (PKR 15,000). */
 export const FUND_GOAL_MAX = 1500000;
 
+/** Payment methods available for bank-transfer contributions. */
+export const PAYMENT_METHODS = ["bank_transfer", "easypaisa", "jazzcash"] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 /** Work-order priority reuses the same visual language as the status tones. */
 export const PRIORITY_TONE: Record<string, Tone> = {
   high: "broken",
