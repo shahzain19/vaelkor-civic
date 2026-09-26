@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatCents } from "@/lib/civic";
+import { formatCents, FUND_CONTRIBUTION } from "@/lib/civic";
 import { useState } from "react";
 
 interface FundingSectionProps {
@@ -44,9 +44,21 @@ export function FundingSection({
       return;
     }
     
-    const cents = parseInt(amount.replace(/[^0-9]/g, ""));
-    if (isNaN(cents)) {
+    const amountInPounds = parseFloat(amount);
+    if (isNaN(amountInPounds)) {
       setError("Invalid amount.");
+      return;
+    }
+    
+    const cents = Math.round(amountInPounds * 100);
+    
+    if (cents < FUND_CONTRIBUTION.min) {
+      setError(`Choose at least £${formatCents(FUND_CONTRIBUTION.min)}.`);
+      return;
+    }
+    
+    if (cents > FUND_CONTRIBUTION.max) {
+      setError(`Maximum contribution is £${formatCents(FUND_CONTRIBUTION.max)}.`);
       return;
     }
     
