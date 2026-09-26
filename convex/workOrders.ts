@@ -145,8 +145,8 @@ export const accept = mutation({ // placeholder
 
         if (totalContributions < fundingThreshold) {
           throw err.conflict(
-            `This work order requires at least £${formatCents(fundingThreshold)} in contributions to be claimed. ` +
-            `Current total: £${formatCents(totalContributions)}.`
+            `This work order requires at least PKR ${formatCents(fundingThreshold)} in contributions to be claimed. ` +
+            `Current total: PKR ${formatCents(totalContributions)}.`
           );
         }
       }

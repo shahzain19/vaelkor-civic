@@ -53,12 +53,12 @@ export function FundingSection({
     const cents = Math.round(amountInPounds * 100);
     
     if (cents < FUND_CONTRIBUTION.min) {
-      setError(`Choose at least £${formatCents(FUND_CONTRIBUTION.min)}.`);
+      setError(`Choose at least PKR ${formatCents(FUND_CONTRIBUTION.min)}.`);
       return;
     }
     
     if (cents > FUND_CONTRIBUTION.max) {
-      setError(`Maximum contribution is £${formatCents(FUND_CONTRIBUTION.max)}.`);
+      setError(`Maximum contribution is PKR ${formatCents(FUND_CONTRIBUTION.max)}.`);
       return;
     }
     
@@ -82,11 +82,11 @@ export function FundingSection({
         <div className="space-y-2">
           <div className="flex justify-between">
             <span className="text-sm font-medium">Goal</span>
-            <span className="text-sm font-medium">£{formattedGoal}</span>
+            <span className="text-sm font-medium">PKR {formattedGoal}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm text-muted-foreground">Raised</span>
-            <span className="text-sm font-medium">£{formattedTotal}</span>
+            <span className="text-sm font-medium">PKR {formattedTotal}</span>
           </div>
         </div>
         <div className="space-y-2">
@@ -103,7 +103,7 @@ export function FundingSection({
             disabled={isLoading}
             className="w-full"
           >
-            {isLoading ? "Processing..." : `Chip in £${amount || ""}`}
+            {isLoading ? "Processing..." : `Chip in PKR ${amount || ""}`}
           </Button>
         </div>
       </div>
