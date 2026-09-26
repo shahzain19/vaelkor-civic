@@ -194,6 +194,54 @@ export const contribute = mutation({
  *
  * Used by the case page to show the right UI state without extra round-trips.
  */
+/**
+ * Lists pending fund claims for admin review.
+ *
+ * Returns claim rows enriched with the claimant name, the case details, and
+ * the work order status so an admin can see at a glance which cases still need
+ * their contributions verified.
+ */
+export const listPendingClaims = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await ctx.auth.getUserIdentity();
+    if (!user) return [];
+
+    const convexUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", user.subject))
+      .first();
+    if (!convexUser || convexUser.role !== "admin") return [];
+
+    const claims = await ctx.db
+      .query("fundClaims")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    return Promise.all(
+      claims.map(async (claim) => {
+        const issue = await ctx.db.get(claim.issueId);
+        const workOrder = issue?.workOrderId ? await ctx.db.get(issue.workOrderId) : null;
+        const claimant = await ctx.db.get(claim.userId);
+        const screenshotUrl = claim.screenshotStorageId
+          ? await ctx.storage.getUrl(claim.screenshotStorageId)
+          : null;
+        return {
+          ...claim,
+          issueCaseNumber: issue?.caseNumber ?? null,
+          issueTitle: issue?.title ?? null,
+          issueCategory: issue?.category ?? null,
+          issueStatus: issue?.status ?? null,
+          workOrderStatus: workOrder?.status ?? null,
+          claimantName: claimant?.name ?? "Unknown",
+          claimantRole: claimant?.role ?? null,
+          screenshotUrl,
+        };
+      }),
+    );
+  },
+});
+
 export const getMyClaim = query({
   args: { issueId: v.id("issues") },
   handler: async (ctx, args) => {

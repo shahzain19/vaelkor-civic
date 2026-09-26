@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { LifeBuoy, ShieldAlert } from "lucide-react";
+import { DollarSign, LifeBuoy, ShieldAlert } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { MAX_GRANT, type EscalatedCase } from "@/convex/oversight";
 import type { SeriesPoint } from "@/convex/analytics";
@@ -95,16 +95,28 @@ export default function AdminOversightPage() {
         title="Case oversight"
         description="Cases that have spent every inspection attempt, and reporting on the ledger as a whole. Allowing another attempt is the only decision available here — it is recorded against your name on the case history."
         actions={
-          <button
-            type="button"
-            onClick={() => setView((v) => (v === "queue" ? "reporting" : "queue"))}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "sm" }),
-              "min-h-9 sm:min-h-0",
-            )}
-          >
-            {view === "queue" ? "View reporting" : "View escalations"}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/fund-claims"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-9 sm:min-h-0",
+              )}
+            >
+              <DollarSign className="size-3.5" />
+              Fund claims
+            </Link>
+            <button
+              type="button"
+              onClick={() => setView((v) => (v === "queue" ? "reporting" : "queue"))}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "min-h-9 sm:min-h-0",
+              )}
+            >
+              {view === "queue" ? "View reporting" : "View escalations"}
+            </button>
+          </div>
         }
       />
 

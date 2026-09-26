@@ -309,7 +309,8 @@ export default defineSchema({
   })
     .index("by_issue", ["issueId"])
     .index("by_user", ["userId"])
-    .index("by_issue_status", ["issueId", "status"]),
+    .index("by_issue_status", ["issueId", "status"])
+    .index("by_status", ["status"]),
 
   /**
    * The release of the fund to the contractor.
