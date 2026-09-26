@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { ArrowLeft, ArrowRight, MapPin, Users, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  MapPin,
+  Users,
+  ShieldCheck,
+} from "lucide-react";
 import { PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,63 +24,129 @@ export default function AboutPage() {
           <ArrowLeft className="size-3.5" />
           Back home
         </Link>
-        <h1 className="mt-5 text-[2.25rem] leading-[1.1] font-semibold tracking-[-0.03em] text-balance sm:text-[3rem]">
-          Karachi deserves better.
+
+        <h1 className="mt-5 max-w-[18ch] text-[2.25rem] leading-[1.1] font-semibold tracking-[-0.03em] text-balance sm:text-[3rem]">
+          Karachi has problems people already know about.
         </h1>
-        <p className="mt-4 max-w-[52ch] text-[1.0625rem] leading-relaxed text-muted-foreground text-pretty">
-          Vaelkor Civic was born from a single pothole on a rainy evening in Gulshan-e-Iqbal — and the frustration of knowing that fixing it shouldn&apos;t require a connection, a bribe, or a prayer.
+
+        <p className="mt-4 max-w-[58ch] text-[1.0625rem] leading-relaxed text-muted-foreground text-pretty">
+          Broken roads. Overflowing garbage. Dead streetlights. Open drains.
+          Water problems. Damaged footpaths. People see them every day. The
+          problem is what happens after someone notices.
         </p>
       </div>
 
-      {/* ── The story ────────────────────────────────────────────── */}
-      <Section label="How it started">
+      {/* ── The problem ─────────────────────────────────────────── */}
+      <Section label="The problem">
         <div className="max-w-[64ch] space-y-6 text-[0.9375rem] leading-relaxed text-pretty">
           <p>
-            It was monsoon season in 2023. Fatima, a teacher at a government school in North Nazimabad, had been walking the same route home for six years. Every evening, she stepped over the same crater in the road — wide enough to swallow a scooter wheel, deep enough to collect toxic water that attracted mosquitoes by the thousand.
+            A complaint gets made. Someone takes a picture. Maybe a post goes
+            up. Maybe a helpline is called.
           </p>
+
           <p>
-            She complained to the union council. She posted on Facebook. She asked her husband to call his cousin who knew someone at the municipality. Nothing moved. The pothole grew. So did the dengue cases in her building.
+            Then the trail often disappears.
           </p>
+
           <p>
-            One night, her neighbour&rsquo;s child fell into the hole while playing cricket. No one was seriously hurt, but the fear was real. That&rsquo;s when Fatima realized: the problem was never that no one cared. It was that caring had no structure.
+            There isn't always a simple public record showing what was reported,
+            whether anyone confirmed it, who was supposed to act, what happened
+            next, or whether the problem was actually fixed.
           </p>
+
           <p>
-            <strong>What if the proof was undeniable?</strong> What if ten people could stand behind the same photograph and say &ldquo;this needs fixing&rdquo; — and the system couldn&rsquo;t ignore them? What if the money raised by the community was visible, tracked, and released only when the work was done?
+            That makes a basic civic problem surprisingly difficult to follow.
+            People can see what is wrong, but they often cannot easily see what
+            happened afterward.
           </p>
+
           <p>
-            That night, the first line of Vaelkor Civic was written.
+            <strong>
+              Vaelkor Civic is our attempt to build that missing layer.
+            </strong>
           </p>
         </div>
       </Section>
 
-      {/* ── What we do ───────────────────────────────────────────── */}
+      {/* ── Why we built it ─────────────────────────────────────── */}
+      <Section label="Why we built it">
+        <div className="max-w-[64ch] space-y-6 text-[0.9375rem] leading-relaxed text-pretty">
+          <p>
+            We started building Vaelkor Civic around a simple question:
+          </p>
+
+          <p className="text-[1.15rem] leading-relaxed font-medium tracking-[-0.01em]">
+            What would happen if citizens had a proper record of the problems
+            around them?
+          </p>
+
+          <p>
+            A photograph isn't enough.
+          </p>
+
+          <p>
+            A complaint isn't enough.
+          </p>
+
+          <p>
+            A work order isn't enough.
+          </p>
+
+          <p>
+            The useful part is the chain connecting them.
+          </p>
+
+          <p>
+            A problem is reported with evidence. Other people can confirm it.
+            The case develops a public history. If money is involved, its
+            movement can be recorded. If work is claimed to be complete, there
+            should be evidence of the result.
+          </p>
+
+          <p>
+            The goal isn't to make government look good or bad.
+          </p>
+
+          <p>
+            <strong>
+              It's to make the state of a neighbourhood harder to hide.
+            </strong>
+          </p>
+        </div>
+      </Section>
+
+      {/* ── What we built ────────────────────────────────────────── */}
       <Section label="What we built">
         <div className="grid gap-6 lg:grid-cols-3">
           {[
             {
               icon: MapPin,
               title: "Report anything",
-              body: "A broken streetlight. A clogged drain. A cracked footpath. Take a photo, mark the location, and file a case. It takes thirty seconds.",
+              body: "See a broken road, damaged streetlight, overflowing drain, garbage buildup, or another civic problem? Document it, locate it, and create a case.",
             },
             {
               icon: Users,
-              title: "Neighbours confirm",
-              body: "Three people must verify the problem is real before a work order opens. This prevents spam, pranks, and fabrication — while proving the issue affects real people.",
+              title: "Build public evidence",
+              body: "A single complaint can be dismissed as noise. Independent confirmations provide a clearer picture of whether a problem is real and affecting a community.",
             },
             {
               icon: ShieldCheck,
-              title: "Fund the repair",
-              body: "The community raises the money. Contractors bid for the work. Before-and-after photos prove it was done. An independent inspector signs off. Every step is public.",
+              title: "Follow what happens",
+              body: "A report shouldn't disappear after submission. The case can carry a visible history of evidence, confirmations, actions, and outcomes.",
             },
           ].map((item) => (
             <div
               key={item.title}
               className="rounded-[var(--radius)] border border-border bg-card p-5"
             >
-              <div className="size-9 rounded-[var(--radius-sm)] border border-border bg-muted flex items-center justify-center">
+              <div className="flex size-9 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-muted">
                 <item.icon className="size-4.5 text-foreground" />
               </div>
-              <h3 className="mt-4 text-[0.9375rem] font-medium">{item.title}</h3>
+
+              <h3 className="mt-4 text-[0.9375rem] font-medium">
+                {item.title}
+              </h3>
+
               <p className="mt-2 text-[0.875rem] leading-relaxed text-muted-foreground">
                 {item.body}
               </p>
@@ -84,65 +155,146 @@ export default function AboutPage() {
         </div>
       </Section>
 
-      {/* ── The numbers ──────────────────────────────────────────── */}
-      <Section label="Built on trust, not promises">
+      {/* ── The principle ────────────────────────────────────────── */}
+      <Section label="The principle">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { value: "3", label: "Confirmations needed" },
-            { value: "100%", label: "Evidence required" },
-            { value: "0", label: "Money without inspection" },
-            { value: "Public", label: "Everything is logged" },
-          ].map((stat) => (
+            {
+              value: "01",
+              label: "Document",
+              body: "Start with evidence.",
+            },
+            {
+              value: "02",
+              label: "Confirm",
+              body: "Let people establish that the problem is real.",
+            },
+            {
+              value: "03",
+              label: "Follow",
+              body: "Keep the history attached to the case.",
+            },
+            {
+              value: "04",
+              label: "Publish",
+              body: "Make the record visible.",
+            },
+          ].map((item) => (
             <div
-              key={stat.label}
-              className="rounded-[var(--radius)] border border-border bg-card p-5 text-center"
+              key={item.value}
+              className="rounded-[var(--radius)] border border-border bg-card p-5"
             >
-              <p className="font-mono text-[2rem] font-semibold tabular-nums">
-                {stat.value}
+              <p className="font-mono text-[0.75rem] text-muted-foreground">
+                {item.value}
               </p>
-              <p className="mt-1 text-[0.8125rem] text-muted-foreground">
-                {stat.label}
+
+              <p className="mt-5 text-[1rem] font-medium">
+                {item.label}
+              </p>
+
+              <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-muted-foreground">
+                {item.body}
               </p>
             </div>
           ))}
         </div>
-        <p className="mt-6 max-w-[56ch] text-[0.875rem] leading-relaxed text-muted-foreground text-pretty">
-          No case closes without photographs, an inspector&rsquo;s signature, and a public record. Contractors can&rsquo t re-submit work they haven&rsquo;t done. Inspectors can&rsquo;t approve what wasn&rsquo;t verified. The ledger is permanent — nothing is deleted.
-        </p>
       </Section>
 
-      {/* ── Our philosophy ──────────────────────────────────────── */}
+      {/* ── Transparency ─────────────────────────────────────────── */}
       <Section label="Why transparency matters">
         <div className="max-w-[56ch] space-y-5 text-[0.9375rem] leading-relaxed text-pretty">
           <p>
-            In a city of fifteen million, trust isn&rsquo;t given — it&rsquo;s earned. And it&rsquo;s earned when people can <strong>see</strong> what&rsquo;s happening with their money and their streets.
+            Civic infrastructure is not an abstract issue.
           </p>
+
           <p>
-            We built Vaelkor Civic because we believe every resident of Karachi — whether in DHA, Liaquatabad, or Korangi — deserves to live on roads that don&rsquo't destroy their tyres, under lights that actually work, in neighbourhoods where drains don&rsquo;t turn their streets into rivers.
+            A pothole damages someone's bike. A broken streetlight changes how
+            someone gets home. A blocked drain can turn a road into a river.
+            Garbage doesn't stay contained to one photograph.
           </p>
+
           <p>
-            This isn&rsquo;t a government app. It isn&rsquo't a charity. It&rsquo;s a <strong>ledger</strong> — a public record of problems reported, problems confirmed, money raised, money spent, and work completed. Anyone can read it. No one can erase it.
+            These are ordinary problems, but they affect millions of ordinary
+            decisions every day.
+          </p>
+
+          <p>
+            We believe technology should make those problems easier to
+            document, understand, and follow through.
+          </p>
+
+          <p>
+            <strong>Not replace citizens.</strong>
+            <br />
+            <strong>Not replace institutions.</strong>
+            <br />
+            <strong>Give people better tools to participate in their city.</strong>
           </p>
         </div>
       </Section>
 
-      {/* ── Join us ─────────────────────────────────────────────── */}
-      <Section label="Be part of the change">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="max-w-[44ch] text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">
-            Every case on this platform started with one person who refused to look away. The next case could be yours.
+      {/* ── Not pretending ───────────────────────────────────────── */}
+      <Section label="Where we are">
+        <div className="max-w-[64ch] space-y-6 text-[0.9375rem] leading-relaxed text-pretty">
+          <p>
+            Vaelkor Civic isn't being presented as a finished solution to
+            Karachi's infrastructure problems.
           </p>
+
+          <p>
+            It's a system we're building and testing around a simple principle:
+          </p>
+
+          <p className="text-[1.15rem] leading-relaxed font-medium tracking-[-0.01em]">
+            If something affects the public, the public should be able to see
+            its record.
+          </p>
+
+          <p>
+            The first version is focused on Karachi. The underlying idea isn't
+            limited to Karachi.
+          </p>
+
+          <p>
+            Every city has roads that need fixing, lights that stop working,
+            drains that need attention, and problems that fall between the
+            cracks.
+          </p>
+
+          <p>
+            The technology can help create the missing trail between{" "}
+            <strong>someone noticing a problem</strong> and{" "}
+            <strong>everyone being able to see what happened to it.</strong>
+          </p>
+        </div>
+      </Section>
+
+      {/* ── Join ─────────────────────────────────────────────────── */}
+      <Section label="Start with one problem">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-[48ch] text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">
+            You don't need to fix a city to make a difference. Start with one
+            road, one streetlight, one blocked drain, or one properly
+            documented case.
+          </p>
+
           <div className="flex shrink-0 flex-wrap items-center gap-2.5">
             <Link
               href="/report"
               className={cn(buttonVariants({ size: "lg" }))}
             >
               Report a problem
-              <ArrowRight className="size-4 ml-1" />
+              <ArrowRight className="ml-1 size-4" />
             </Link>
+
             <Link
               href="/ledger"
-              className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
+              className={cn(
+                buttonVariants({
+                  size: "lg",
+                  variant: "outline",
+                })
+              )}
             >
               Read the ledger
             </Link>
@@ -152,9 +304,8 @@ export default function AboutPage() {
 
       {/* ── Footer note ─────────────────────────────────────────── */}
       <div className="pb-12 pt-2 text-center text-[0.75rem] text-muted-foreground">
-        <p>
-          Vaelkor Civic · Karachi, Pakistan · Est. 2024
-        </p>
+        <p>Vaelkor Civic · Karachi, Pakistan</p>
+
         <p className="mt-1">
           Built by citizens, for citizens. Open ledger, open future.
         </p>

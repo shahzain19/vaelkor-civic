@@ -181,6 +181,24 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* Hero image — Karachi, the city this product serves. */}
+      <div className="relative h-[16rem] w-full overflow-hidden sm:h-[22rem] lg:h-[28rem]">
+        <Image
+          src="/Gemini_Generated_Image_8gwjwj8gwjwj8gwj.jpeg"
+          alt="Karachi cityscape at dusk"
+          fill
+          priority
+          className="object-cover"
+          sizes="(min-width: 1024px) 100vw, (min-width: 640px) 100vw, 100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        <div className="absolute bottom-4 left-6 right-6 sm:bottom-6 sm:left-8">
+          <p className="text-[0.75rem] font-mono text-white/60">
+            Karachi, Pakistan &middot; 15 million citizens
+          </p>
+        </div>
+      </div>
+
       {/* Live cases. Real rows from the database rather than a mock screenshot,
           so the landing page cannot drift away from the product. */}
       <Section
