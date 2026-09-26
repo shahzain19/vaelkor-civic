@@ -252,6 +252,11 @@ export const get = query({
       }),
     );
 
+    const fundGoal = await ctx.db
+      .query("fundGoals")
+      .withIndex("by_issue", (q) => q.eq("issueId", args.issueId))
+      .first();
+
     return {
       ...issue,
       reporterName: reporter?.name ?? "Unknown",
@@ -261,6 +266,13 @@ export const get = query({
       workOrder,
       resolution: resolution
         ? { ...resolution, notes: resolution.notes ?? null }
+        : null,
+      fundGoal: fundGoal
+        ? {
+            id: fundGoal._id,
+            targetCents: fundGoal.targetCents,
+            createdAt: fundGoal.createdAt,
+          }
         : null,
     };
   },

@@ -170,4 +170,78 @@ export const contribute = mutation({
   },
 });
 
+/**
+ * Adjust the community fund goal for a case.
+ *
+ * Only administrators can call this. The new goal is validated against the
+ * contribution limits (it must be a whole number of cents within the min/max
+ * range) and a log entry is written so the change is attributable.
+ */
+export const adjustGoal = mutation({
+  args: {
+    issueId: v.id("issues"),
+    targetCents: v.number(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireRole(ctx, "admin", "Only administrators can adjust fund goals");
+
+    try {
+      if (!Number.isInteger(args.targetCents)) {
+        throw err.invalid("Goal must be a whole number of paise (cents).");
+      }
+      if (args.targetCents < FUND_CONTRIBUTION.min) {
+        throw err.invalid(
+          `Goal must be at least ${formatCents(FUND_CONTRIBUTION.min)}.`,
+        );
+      }
+      if (args.targetCents > FUND_CONTRIBUTION.max) {
+        throw err.invalid(
+          `Maximum goal is ${formatCents(FUND_CONTRIBUTION.max)}.`,
+        );
+      }
+
+      const issue = await ctx.db.get(args.issueId);
+      if (!issue) throw err.notFound("That case no longer exists.");
+
+      const workOrder = issue.workOrderId
+        ? await ctx.db.get(issue.workOrderId)
+        : null;
+      if (!workOrder) {
+        throw err.precondition(
+          "This case does not have an open work order with a fund goal.",
+        );
+      }
+      if (workOrder.status !== "open") {
+        throw err.conflict(
+          "Fund goals can only be adjusted while the work order is still open.",
+        );
+      }
+
+      const existing = await ctx.db
+        .query("fundGoals")
+        .withIndex("by_issue", (q) => q.eq("issueId", args.issueId))
+        .first();
+      if (!existing) {
+        throw err.notFound("No fund goal found for this case.");
+      }
+
+      const now = Date.now();
+      await ctx.db.patch(existing._id, { targetCents: args.targetCents });
+
+      await ctx.db.insert("activityLogs", {
+        issueId: args.issueId,
+        actorId: admin._id,
+        action: "goal_adjusted",
+        message: `${admin.name} adjusted the fund goal to ${formatCents(args.targetCents)}.${args.note ? ` Note: "${args.note}"` : ""}`,
+        createdAt: now,
+      });
+
+      return { goalId: existing._id, targetCents: args.targetCents };
+    } catch (e) {
+      throw toSafeError(e);
+    }
+  },
+});
+
 export { err };

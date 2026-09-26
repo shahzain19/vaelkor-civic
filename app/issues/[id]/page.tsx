@@ -19,7 +19,7 @@ import { FileDrop } from "@/components/form";
 import { FundingSection } from "@/components/FundingSection";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, type Role } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, formatCents, type Role } from "@/lib/civic";
 import { formatCoord } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,8 @@ export default function CaseFilePage({
   const generateUploadUrl = useMutation(api.evidence.generateUploadUrl);
   const attach = useMutation(api.evidence.attach);
 
-  const [busy, setBusy] = useState<null | "confirm" | "photo">(null);
+
+  const [busy, setBusy] = useState<null | "confirm" | "photo" | "adjustGoal">(null);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   if (issue === undefined) return <CaseSkeleton />;
@@ -303,9 +304,16 @@ export default function CaseFilePage({
                 <h2 className="eyebrow mb-3">Fund this work</h2>
                 <FundingSection
                   issueId={issueId}
-                  goalCents={FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT}
+                  goalCents={issue.fundGoal?.targetCents ?? FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT}
                   onSuccess={() => setNotice({ tone: "success", text: "Contribution recorded. Thank you." })}
                 />
+                {me?.role === "admin" && issue.fundGoal && (
+                  <AdminGoalAdjust
+                    issueId={issueId}
+                    currentGoalCents={issue.fundGoal.targetCents}
+                    onAdjusted={(newCents) => setNotice({ tone: "success", text: `Goal updated to ${formatCents(newCents)}.` })}
+                  />
+                )}
               </div>
             )}
 
@@ -572,5 +580,121 @@ function CaseSkeleton() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+/* ── Admin goal adjustment ─────────────────────────────────────────────────── */
+
+function AdminGoalAdjust({
+  issueId,
+  currentGoalCents,
+  onAdjusted,
+}: {
+  issueId: string;
+  currentGoalCents: number;
+  onAdjusted: (newCents: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [newAmount, setNewAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const adjustGoalMutation = useMutation(api.fund.adjustGoal);
+  const typedIssueId = issueId as Id<"issues">;
+
+  async function handleAdjust() {
+    const cents = Math.round(parseFloat(newAmount) * 100);
+    if (isNaN(cents) || cents < 100) {
+      setError("Enter a valid amount (minimum PKR 1).");
+      return;
+    }
+    if (cents > 50000) {
+      setError("Maximum goal is PKR 500.");
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+    try {
+      await adjustGoalMutation({ issueId: typedIssueId, targetCents: cents, note: note.trim() || undefined });
+      setNewAmount("");
+      setNote("");
+      setOpen(false);
+      onAdjusted(cents);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not adjust goal.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border">
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="text-[0.8125rem] font-medium text-foreground hover:underline"
+        >
+          Admin: Adjust fund goal
+        </button>
+      ) : (
+        <div className="space-y-3 rounded-[var(--radius)] border border-border bg-muted/30 p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[0.8125rem] text-muted-foreground">
+              Current: <span className="font-mono text-foreground">{formatCents(currentGoalCents)}</span>
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[10rem_1fr]">
+            <div>
+              <label htmlFor={`goal-${issueId}`} className="text-[0.75rem] text-muted-foreground">
+                New goal (PKR)
+              </label>
+              <input
+                id={`goal-${issueId}`}
+                type="number"
+                step="0.01"
+                value={newAmount}
+                onChange={(e) => setNewAmount(e.target.value)}
+                placeholder="e.g. 5.00"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label htmlFor={`note-${issueId}`} className="text-[0.75rem] text-muted-foreground">
+                Reason (optional)
+              </label>
+              <input
+                id={`note-${issueId}`}
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Why the change?"
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleAdjust()}
+              disabled={pending}
+              className="inline-flex items-center gap-1 rounded-md bg-foreground px-3 py-1.5 text-xs font-medium text-background hover:bg-foreground/90 disabled:opacity-50"
+            >
+              {pending ? "Updating…" : "Update goal"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setError(null); }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
