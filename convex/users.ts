@@ -7,6 +7,7 @@ import {
   requireIdentity,
   userByClerkId,
 } from "./auth";
+import { isSelfSelectableRole } from "../lib/civic";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
 
@@ -67,10 +68,24 @@ export const ensure = mutation({
 });
 
 /**
- * Sets the civic role.
+ * Sets your own civic role.
  *
  * Rate limited because role cycling would otherwise let one account enumerate
  * every role-gated surface, including the ones it should not be in.
+ *
+ * `admin` is refused outright, and this is the enforcement point rather than a
+ * UI convention. Onboarding deliberately lets anyone switch between the three
+ * civic roles at will, so the naive version of "add admin to the role union"
+ * would hand `admin` to every signed-in account the first time it called
+ * `setRole({ role: "admin" })` — the onboarding page would look exactly the same
+ * while the backend became escalable.
+ *
+ * Note this mutation can only change the *caller's own* role, which is why
+ * handing the admin role to somebody else is a separate, ops-gated function
+ * (`admin.grantRole`) rather than a flag on this one. The refusal is
+ * deliberately uniform and mentions no configuration state: telling a
+ * signed-in user whether the ops allowlist happens to be set would leak how the
+ * deployment is administered to anyone who calls the function.
  */
 export const setRole = mutation({
   args: { role: roleValidator },
@@ -79,6 +94,10 @@ export const setRole = mutation({
     await enforceRateLimit(ctx, "roleChange", identity.subject);
 
     try {
+      if (!isSelfSelectableRole(args.role)) {
+        throw err.forbidden("Only an operator can grant the admin role.");
+      }
+
       const existing = await userByClerkId(ctx, identity.subject);
       const name = resolveName(identity).slice(0, 80);
 

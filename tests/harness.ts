@@ -14,7 +14,7 @@ import { api, internal } from "../convex/_generated/api";
 import type { Doc, Id } from "../convex/_generated/dataModel";
 import { LIMITS as FIELD_LIMITS } from "../convex/validation";
 import { LIMITS as RATE_LIMITS } from "../convex/rateLimit";
-import type { Category } from "../lib/civic";
+import type { Category, Role as CivicRole } from "../lib/civic";
 
 type Severity = "low" | "medium" | "high";
 
@@ -32,7 +32,9 @@ export type Harness = ReturnType<typeof setup>;
 let seq = 0;
 const nextSubject = () => `user_test_${++seq}`;
 
-export type Role = "citizen" | "contractor" | "inspector";
+// Derived from the shared vocabulary rather than restated, so a role added
+// there is available to fixtures here without a second edit.
+export type Role = CivicRole;
 
 export type TestUser = {
   subject: string;
@@ -126,6 +128,25 @@ export async function deletedIssueId(t: Harness): Promise<Id<"issues">> {
   });
   await t.run((ctx) => ctx.db.delete(issueId));
   return issueId;
+}
+
+/**
+ * A syntactically valid `users` id for a row that no longer exists.
+ *
+ * Used to check that a mutation refuses to quietly create a replacement when
+ * its target has been deleted, which is the behaviour that turns an id from
+ * a lookup into a mint.
+ */
+export async function deletedUserId(t: Harness): Promise<Id<"users">> {
+  const userId = await t.run((ctx) =>
+    ctx.db.insert("users", {
+      clerkId: "user_temp_role",
+      name: "Temp",
+      createdAt: Date.now(),
+    }),
+  );
+  await t.run((ctx) => ctx.db.delete(userId));
+  return userId;
 }
 
 /* Direct database reads --------------------------------------------------- */

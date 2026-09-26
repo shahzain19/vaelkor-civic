@@ -87,7 +87,7 @@ export async function closeCase(
   workOrderId: Id<"workOrders">,
   inspector?: TestUser,
 ): Promise<TestUser> {
-  const reviewer = inspector ?? (await makeUser(t, "inspector"));
+  const reviewer = inspector ?? (await makeUser(t, "admin"));
   // `closed` is only reachable from `inspection`, never straight from
   // `completion_submitted`.
   await as(reviewer)(t).mutation(api.inspections.beginInspection, { workOrderId });

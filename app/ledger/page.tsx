@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
-import { LocateFixed, Plus, Search, ShieldCheck, X } from "lucide-react";
+import dynamic from "next/dynamic";
+import { List, LocateFixed, Map as MapIcon, Plus, Search, ShieldCheck, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { CATEGORY_OPTIONS } from "@/components/status";
 import { CaseLedger, type CaseSummary } from "@/components/case-list";
@@ -20,9 +21,27 @@ import {
 } from "@/components/ui/select";
 import { useGeolocation } from "@/hooks/use-geolocation";
 import { LOCATION_PRIVACY_QUERY_M } from "@/lib/geo";
+import { STATUS_ORDER } from "@/lib/civic";
 import { cn } from "@/lib/utils";
 
 const NEARBY_RADIUS_KM = 25;
+
+const CivicMap = dynamic(
+  () => import("@/components/civic-map").then((m) => m.CivicMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="grid h-[32rem] w-full place-items-center rounded-[var(--radius)] border bg-muted/40"
+        role="status"
+      >
+        <span className="text-[0.8125rem] text-muted-foreground">
+          Loading the map…
+        </span>
+      </div>
+    ),
+  },
+);
 
 const STAGES = [
   { value: "live", label: "Live" },
@@ -59,6 +78,10 @@ export default function LedgerPage() {
   const [stage, setStage] = useState<(typeof STAGES)[number]["value"]>("live");
   const [category, setCategory] = useState("all");
   const [query, setQuery] = useState("");
+  // List and map are two readings of the same cases. Text search stays a
+  // list-only affordance — it matches prose you can only read in a row —
+  // while stage and category are structured and carry over to the map.
+  const [view, setView] = useState<"list" | "map">("list");
 
   const cases = useMemo<CaseSummary[]>(() => {
     const rows = center
@@ -94,6 +117,15 @@ export default function LedgerPage() {
     });
   }, [cases, category, stage, query]);
 
+  // The same predicate the list applies, expressed as a status set so the map
+  // can be given it directly. `null` means "no stage filter".
+  const mapStatuses = useMemo<string[] | undefined>(() => {
+    if (stage === "all") return undefined;
+    if (stage === "live") return STATUS_ORDER.filter((s) => LIVE.has(s));
+    return [stage === "closed" ? "closed" : "open"];
+  }, [stage]);
+  const mapCategories = category === "all" ? undefined : [category];
+
   const loading = center ? nearby === undefined : recent === undefined;
   const filtering = stage !== "all" || category !== "all" || query.trim() !== "";
   const hasDistance = filtered.some((c) => c.distanceKm !== undefined);
@@ -125,30 +157,37 @@ export default function LedgerPage() {
           ledger. */}
       <div className="sticky top-(--header-h) z-30 -mx-4 border-y border-border bg-background/90 px-4 py-2.5 backdrop-blur-md sm:-mx-6 sm:px-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search cases, addresses, case numbers"
-              aria-label="Search cases"
-              className="h-8 pr-8 pl-8"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                aria-label="Clear search"
-                className="absolute top-1/2 right-1.5 grid size-5 -translate-y-1/2 place-items-center rounded-[3px] text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-3" />
-              </button>
-            )}
-          </div>
+          {view === "list" ? (
+            <div className="relative min-w-0 flex-1">
+              <Search
+                className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search cases, addresses, case numbers"
+                aria-label="Search cases"
+                className="h-8 pr-8 pl-8"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute top-1/2 right-1.5 grid size-5 -translate-y-1/2 place-items-center rounded-[3px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="min-w-0 flex-1 truncate text-[0.8125rem] text-muted-foreground">
+              Stage and type filters apply to the map. Text search stays in the
+              list, where there is prose to read.
+            </p>
+          )}
 
           <div className="flex items-center gap-2">
             <div className="seg shrink-0" role="group" aria-label="Stage">
@@ -193,14 +232,41 @@ export default function LedgerPage() {
             "Loading cases…"
           ) : (
             <>
-              <span className="font-mono text-foreground">{filtered.length}</span>{" "}
-              {filtered.length === 1 ? "case" : "cases"}
-              {hasDistance
-                ? ` within ${NEARBY_RADIUS_KM} km, nearest first`
-                : " most recent first"}
+              <span className="font-mono text-foreground">
+                {view === "map" ? cases.length : filtered.length}
+              </span>{" "}
+              {view === "map" ? "cases" : filtered.length === 1 ? "case" : "cases"}
+              {view === "map"
+                ? " in and around the viewport"
+                : hasDistance
+                  ? ` within ${NEARBY_RADIUS_KM} km, nearest first`
+                  : " most recent first"}
             </>
           )}
         </p>
+
+        <div className="seg shrink-0" role="group" aria-label="View">
+          <button
+            type="button"
+            data-active={view === "list"}
+            aria-pressed={view === "list"}
+            onClick={() => setView("list")}
+            className="seg-item inline-flex items-center gap-1.5"
+          >
+            <List className="size-3.5" aria-hidden />
+            List
+          </button>
+          <button
+            type="button"
+            data-active={view === "map"}
+            aria-pressed={view === "map"}
+            onClick={() => setView("map")}
+            className="seg-item inline-flex items-center gap-1.5"
+          >
+            <MapIcon className="size-3.5" aria-hidden />
+            Map
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <LocateFixed
@@ -235,7 +301,16 @@ export default function LedgerPage() {
       )}
 
       {loading ? (
-        <CaseLedger skeletonCount={6} />
+        view === "map" ? (
+          <CivicMap
+            center={center ?? undefined}
+            categories={mapCategories}
+            statuses={mapStatuses}
+            className="h-[32rem]"
+          />
+        ) : (
+          <CaseLedger skeletonCount={6} />
+        )
       ) : cases.length === 0 ? (
         <EmptyState
           title="The ledger is empty"
@@ -247,6 +322,19 @@ export default function LedgerPage() {
             </Link>
           }
         />
+      ) : view === "map" ? (
+        <>
+          <CivicMap
+            center={center ?? undefined}
+            categories={mapCategories}
+            statuses={mapStatuses}
+            className="h-[32rem]"
+          />
+          <p className="pt-4 text-center text-xs text-muted-foreground">
+            Zoom to see more of the city. Pins are approximate by design
+            {center ? ", and this view is centred on the same shifted point the list used" : ""}.
+          </p>
+        </>
       ) : filtered.length === 0 ? (
         <EmptyState
           title="No cases match those filters"

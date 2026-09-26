@@ -214,4 +214,46 @@
   .seg-item[data-active="true"] {
     @apply bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06)];
   }
+
+  /* MapLibre popup chrome. The library ships its own opinionated panel, so the
+     surface is restyled here rather than overridden with utility classes that
+     would lose specificity. */
+  .civic-map-popup .maplibregl-popup-content {
+    @apply rounded-[var(--radius)] border bg-card px-3 py-2 shadow-lg;
+  }
+
+  .civic-map-popup .maplibregl-popup-tip {
+    @apply border-t border-border;
+  }
+
+  .civic-popup-ref {
+    @apply font-mono text-[0.6875rem] tracking-[0.06em] text-muted-foreground;
+  }
+
+  .civic-popup-title {
+    @apply mt-0.5 text-[0.8125rem] leading-snug font-medium;
+  }
+
+  .civic-popup-meta {
+    @apply mt-0.5 text-[0.75rem] text-muted-foreground capitalize;
+  }
+
+  /* MapLibre's own controls are the only third-party chrome on the page, so
+     they are pulled into the same visual language as everything else. */
+  .maplibregl-ctrl-group {
+    @apply rounded-[var(--radius)] border shadow-sm;
+  }
+
+  .maplibregl-ctrl-group button {
+    @apply size-8;
+  }
+
+  /* Respect the system setting. The map's zoom animations and the clustered
+     circles both move without the user asking for motion. */
+  @media (prefers-reduced-motion: reduce) {
+    .maplibregl-ctrl-group button,
+    .maplibregl-popup {
+      transition: none !important;
+    }
+  }
 }

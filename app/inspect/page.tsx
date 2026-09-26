@@ -19,24 +19,24 @@ export default function InspectionQueuePage() {
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const queue = useQuery(api.inspections.listQueue);
 
-  const isInspector = me?.role === "inspector";
+  const canInspect = me?.role === "admin";
 
   return (
     <PageShell>
       <PageHeader
-        eyebrow="Inspector"
+        eyebrow="Administration"
         title="Inspection queue"
         description="Cases where a contractor has submitted completion. You decide whether the work is proved — a pass closes the case, a fail returns it."
       />
 
-      {!isInspector && (
+      {!canInspect && (
         <Section rule={false}>
           <Banner tone="warning">
             <span className="flex flex-wrap items-center gap-1.5">
               <ShieldAlert className="size-3.5 shrink-0" />
               {isAuthenticated
-                ? `You are signed in as a ${me?.role ?? "guest"}. Switch to the inspector role to decide cases.`
-                : "Sign in with the inspector role to decide cases."}
+                ? `You are signed in as a ${me?.role ?? "guest"}. Inspection decisions are made by an administrator.`
+                : "Sign in as an administrator to decide cases."}
               <Link
                 href={isAuthenticated ? "/onboarding" : "/sign-in"}
                 className="font-medium underline underline-offset-4"
@@ -124,7 +124,7 @@ export default function InspectionQueuePage() {
         )}
       </Section>
 
-      {isInspector && queue && queue.length > 0 && (
+      {canInspect && queue && queue.length > 0 && (
         <Section label="How a decision is made">
           <ol className="max-w-[62ch] space-y-2.5 text-[0.9375rem] leading-relaxed">
             <li className="flex gap-3">
@@ -149,7 +149,7 @@ export default function InspectionQueuePage() {
         </Section>
       )}
 
-      {isInspector && (
+      {canInspect && (
         <div className="pt-2">
           <Link href="/ledger" className={buttonVariants({ variant: "outline" })}>
             Back to the ledger

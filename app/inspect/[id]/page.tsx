@@ -63,18 +63,18 @@ export default function InspectionPage({
   } | null>(null);
   const started = useRef(false);
 
-  const isInspector = me?.role === "inspector";
+  const canInspect = me?.role === "admin";
   const status = data?.workOrder?.status;
 
   // Opening a queued case claims the review, moving it into `inspection`.
   useEffect(() => {
-    if (!isInspector || status !== "completion_submitted") return;
+    if (!canInspect || status !== "completion_submitted") return;
     if (started.current) return;
     started.current = true;
     void beginInspection({ workOrderId }).catch(() => {
       started.current = false;
     });
-  }, [isInspector, status, workOrderId, beginInspection]);
+  }, [canInspect, status, workOrderId, beginInspection]);
 
   if (data === undefined) {
     return (
@@ -210,9 +210,9 @@ export default function InspectionPage({
       {data.workOrder.status === "completion_submitted" && (
         <Section rule={false}>
           <Banner tone="info">
-            {isInspector
+            {canInspect
               ? "Claiming this review. The case moves to inspection."
-              : "Awaiting an inspector to claim this case."}
+              : "Awaiting an administrator to claim this case."}
           </Banner>
         </Section>
       )}
@@ -254,7 +254,7 @@ export default function InspectionPage({
             <CheckRow
               key={key}
               checked={checklist[key]}
-              disabled={!isInspector || !underReview}
+              disabled={!canInspect || !underReview}
               onChange={(next) =>
                 setChecklist((c) => ({ ...c, [key]: next }))
               }
@@ -269,18 +269,18 @@ export default function InspectionPage({
         </p>
       </Section>
 
-      {underReview && isInspector && (
+      {underReview && canInspect && (
         <Section label="Inspection record">
           <div className="max-w-[62ch] space-y-5">
             <div className="space-y-2">
               <label
-                htmlFor="inspector-notes"
+                htmlFor="review-notes"
                 className="text-[0.8125rem] font-medium"
               >
                 Notes
               </label>
               <textarea
-                id="inspector-notes"
+                id="review-notes"
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

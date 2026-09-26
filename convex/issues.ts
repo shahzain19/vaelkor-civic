@@ -19,6 +19,7 @@ import {
   LIMITS,
   assertCoordinate,
   assertFreshUpload,
+  assertViewport,
   clampLimit,
   clampRadiusKm,
   cleanIdempotencyKey,
@@ -86,7 +87,15 @@ export const listNearby = query({
       .order("desc")
       .take(scanLimit);
 
+    const latDelta = radiusKm / 111;
+    const lngDelta = radiusKm / (111 * Math.cos((args.lat * Math.PI) / 180) || 1);
+
     const withDistance = candidates
+      .filter(
+        (issue) =>
+          Math.abs(issue.lat - args.lat) <= latDelta &&
+          Math.abs(issue.lng - args.lng) <= lngDelta,
+      )
       .map((issue) => ({
         ...issue,
         distanceKm: distanceKm(args.lat, args.lng, issue.lat, issue.lng),
@@ -101,6 +110,82 @@ export const listNearby = query({
         return { ...issue, reporterName: reporter?.name ?? "Unknown" };
       }),
     );
+  },
+});
+
+/**
+ * Cases inside a map viewport, as bare coordinates.
+ *
+ * Public, like the ledger. The projection is deliberately minimal — an id, a
+ * case number, a status and a point — because this is the query a map redraws
+ * on every pan and zoom. It mints no signed storage URLs, hydrates no reporter
+ * names and pulls no evidence, because a viewport that fetches a photograph
+ * per pin would be the most expensive read in the product.
+ *
+ * Convex has no geospatial index, so this still scans the most recent
+ * `LIMITS.map.scan` cases and filters in JS, exactly as `listNearby` does. A
+ * bounding box narrows the *result*, not the *scan*; the real fix is a geo
+ * index, and until that exists both queries are bounded rather than scaled.
+ */
+export const listForMap = query({
+  args: {
+    north: v.number(),
+    south: v.number(),
+    east: v.number(),
+    west: v.number(),
+    limit: v.optional(v.number()),
+    /** Absent or empty means every category. */
+    categories: v.optional(v.array(v.string())),
+    /** Absent or empty means every stage. */
+    statuses: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    assertViewport(args);
+    const limit = clampLimit(args.limit, LIMITS.map.def, LIMITS.map.max);
+
+    const candidates = await ctx.db
+      .query("issues")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .take(LIMITS.map.scan);
+
+    // A viewport wider than the antimeridian arrives as west > east, and the
+    // correct test for "inside" is then a union, not an intersection.
+    const wraps = args.west > args.east;
+    const inBox = (lat: number, lng: number) =>
+      lat <= args.north &&
+      lat >= args.south &&
+      (wraps
+        ? lng >= args.west || lng <= args.east
+        : lng >= args.west && lng <= args.east);
+
+    // Built as sets rather than probed with `includes` per row: the filter
+    // arrays are client-supplied and a scan of up to 3000 rows would otherwise
+    // run a linear search per row.
+    const categories =
+      args.categories && args.categories.length > 0
+        ? new Set(args.categories)
+        : null;
+    const statuses =
+      args.statuses && args.statuses.length > 0 ? new Set(args.statuses) : null;
+
+    return candidates
+      .filter(
+        (issue) =>
+          inBox(issue.lat, issue.lng) &&
+          (!categories || categories.has(issue.category)) &&
+          (!statuses || statuses.has(issue.status)),
+      )
+      .slice(0, limit)
+      .map((issue) => ({
+        _id: issue._id,
+        caseNumber: issue.caseNumber,
+        category: issue.category,
+        status: issue.status,
+        title: issue.title,
+        lat: issue.lat,
+        lng: issue.lng,
+      }));
   },
 });
 

@@ -1,9 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { LEGACY_ROLES, NOTIFICATION_KINDS, ROLES } from "../lib/civic";
 import {
   issueStatusValidator,
   workOrderStatusValidator,
   checklistShape,
+  SEVERITIES,
 } from "./lifecycle";
 
 export const categoryValidator = v.union(
@@ -14,15 +16,31 @@ export const categoryValidator = v.union(
 );
 
 export const severityValidator = v.union(
-  v.literal("low"),
-  v.literal("medium"),
-  v.literal("high"),
+  ...SEVERITIES.map((s) => v.literal(s)),
 );
 
+/**
+ * Derived from `ROLES` rather than written out again.
+ *
+ * This was previously a hand-maintained duplicate of the list in
+ * `convex/lifecycle.ts`, and there were three more copies elsewhere. Five
+ * independent statements of the same union is five chances to add a role in four
+ * of them, which is exactly how a role ends up valid on the server and absent
+ * from the UI. Deriving it makes that class of bug unrepresentable.
+ */
+/**
+ * Includes `LEGACY_ROLES` on purpose, and only for as long as it takes to migrate.
+ *
+ * Convex validates a document whenever it is read, so a row still holding a
+ * removed role makes `users.me` throw for that account and fails any query over
+ * `users`. Accepting the old value keeps those accounts working, and
+ * `normalizeRole` makes them behave as the role that replaced it. Run
+ * `admin.migrateLegacyRoles` (ops-only) and, once it reports none left, delete
+ * this spread and `LEGACY_ROLES` together.
+ */
 export const roleValidator = v.union(
-  v.literal("citizen"),
-  v.literal("contractor"),
-  v.literal("inspector"),
+  ...ROLES.map((r) => v.literal(r)),
+  ...LEGACY_ROLES.map((r) => v.literal(r)),
 );
 
 export const evidenceKindValidator = v.union(
@@ -31,6 +49,17 @@ export const evidenceKindValidator = v.union(
   v.literal("during"),
   v.literal("after"),
   v.literal("inspection"),
+);
+
+/**
+ * Why a notification exists.
+ *
+ * Derived from the shared vocabulary so the backend validator and the UI's
+ * rendering table cannot drift — a kind the UI has no case for would render
+ * as a blank badge, and a kind the backend invents would never render at all.
+ */
+export const notificationKindValidator = v.union(
+  ...NOTIFICATION_KINDS.map((k) => v.literal(k)),
 );
 
 export { issueStatusValidator, workOrderStatusValidator, checklistShape };
@@ -66,6 +95,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_caseNumber", ["caseNumber"])
     .index("by_createdAt", ["createdAt"])
+    // Supports the oversight queue, which orders by what moved most recently.
+    .index("by_updatedAt", ["updatedAt"])
     // Duplicate-report detection scans only the reporter's own recent cases.
     .index("by_reporter", ["reporterId"]),
 
@@ -114,6 +145,35 @@ export default defineSchema({
     .index("by_workOrder", ["workOrderId"])
     // Supports the failure-budget check without loading the whole history.
     .index("by_issue_result", ["issueId", "result"]),
+
+  /**
+   * Extra inspection attempts granted to a case by an administrator.
+   *
+   * Append-only, and that is the whole design. Whether a case is *stuck* is
+   * derived — failed inspections counted against a budget of
+   * `MAX_INSPECTION_FAILURES` plus everything granted here — so there is no
+   * `locked` flag to fall out of step with the inspection history, which is
+   * exactly the drift `admin.integrityCheck` exists to catch. Granting more
+   * budget is the only way out, and every grant is a permanent, attributable
+   * record of who decided the case deserved another attempt.
+   *
+   * Note what is deliberately absent: no way to delete a failed inspection, and
+   * no way to close a case. Rewriting an inspector's ruling or closing a case
+   * without a pass would defeat the two invariants the product rests on, so
+   * neither is reachable from here.
+   */
+  budgetGrants: defineTable({
+    issueId: v.id("issues"),
+    /** Who decided. Kept even if the account is later removed. */
+    grantedBy: v.id("users"),
+    /** Additional failed attempts permitted. */
+    attempts: v.number(),
+    /** Why, in the administrator's words. Appears on the case history. */
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_issue", ["issueId"])
+    .index("by_grantedAt", ["createdAt"]),
 
   activityLogs: defineTable({
     issueId: v.id("issues"),
@@ -179,4 +239,34 @@ export default defineSchema({
   })
     .index("by_issue", ["issueId"])
     .index("by_workOrder", ["workOrderId"]),
+
+  /**
+   * In-app notifications.
+   *
+   * Written in the same mutation as the lifecycle transition that caused them,
+   * so a notification can never disagree with the state it describes. There is
+   * no outbox and no delivery worker: the row *is* the delivery, and the
+   * recipient's own query is the only thing that can mark it read.
+   */
+  notifications: defineTable({
+    userId: v.id("users"),
+    /** Always present: every notification is about a case. */
+    issueId: v.id("issues"),
+    workOrderId: v.optional(v.id("workOrders")),
+    kind: notificationKindValidator,
+    /**
+     * Denormalised so the notifications page renders without a lookup per row.
+     * Copied from the issue at write time and never expected to stay in sync
+     * with a later edit — a case number is permanent anyway.
+     */
+    caseNumber: v.string(),
+    title: v.string(),
+    body: v.string(),
+    /** Absent means unread. Set once, never cleared back. */
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId", "createdAt"])
+    // Supports the unread badge without loading the recipient's whole history.
+    .index("by_user_unread", ["userId", "readAt"]),
 });

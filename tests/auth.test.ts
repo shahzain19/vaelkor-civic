@@ -158,7 +158,7 @@ describe("permissions", () => {
   it("stops an inspector accepting work", async () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
     const workOrderId = await reachVerified(t, reporter);
 
     await expect(
@@ -260,7 +260,7 @@ describe("direct API access", () => {
       const user = await makeUser(t, role);
       await expect(
         as(user)(t).query(api.inspections.listQueue, {}),
-      ).rejects.toThrow(/Only inspectors can see the inspection queue/i);
+      ).rejects.toThrow(/Only administrators can see the inspection queue/i);
     }
   });
 
@@ -272,7 +272,7 @@ describe("direct API access", () => {
 
     await expect(
       as(contractor)(t).query(api.inspections.getForWorkOrder, { workOrderId }),
-    ).rejects.toThrow(/Only inspectors can see the inspection record/i);
+    ).rejects.toThrow(/Only administrators can see the inspection record/i);
     await expect(
       anon(t).query(api.inspections.getForWorkOrder, { workOrderId }),
     ).rejects.toThrow();

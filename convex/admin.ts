@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "./auth";
-import { toSafeError } from "./errors";
+import { requireOps } from "./auth";
+import { err, toSafeError } from "./errors";
 import { resetRateLimit, type LimitName } from "./rateLimit";
-import { ISSUE_STATUSES } from "./lifecycle";
+import { ISSUE_STATUSES, MAX_INSPECTION_FAILURES } from "./lifecycle";
+import { roleValidator } from "./schema";
 
 /**
  * Ops wipe — removes all app data. Not exposed in the UI.
@@ -15,7 +16,7 @@ import { ISSUE_STATUSES } from "./lifecycle";
 export const clearAll = mutation({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireOps(ctx);
 
     try {
       const evidence = await ctx.db.query("evidence").collect();
@@ -28,6 +29,7 @@ export const clearAll = mutation({
       // part-way through a failure.
       const tables = [
         "resolutions",
+        "budgetGrants",
         "activityLogs",
         "inspections",
         "confirmations",
@@ -65,9 +67,54 @@ export const clearAll = mutation({
 export const resetRateLimits = mutation({
   args: { name: v.string(), subject: v.string() },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireOps(ctx);
     await resetRateLimit(ctx, args.name as LimitName, args.subject);
     return true;
+  },
+});
+
+/**
+ * Grants or revokes a role on somebody else's account.
+ *
+ * Ops-only, and separate from `users.setRole` because that mutation is
+ * inherently self-service: it resolves the caller from the identity and changes
+ * the caller's own row, so there is no way for it to promote anyone else. The
+ * `admin` role has to be grantable by an operator, so it needs a function that
+ * takes a target.
+ *
+ * Two deliberate constraints:
+ *
+ *  - The target must already exist. Creating a row here would mint an identity
+ *    for a Clerk subject that has never signed in, which is a much larger
+ *    capability than changing a role and is not something an allowlist entry
+ *    should quietly imply.
+ *  - An operator cannot grant themselves `admin`, and cannot remove their own
+ *    ops access by demoting themselves. Both are footguns rather than attacks,
+ *    but the second would leave a deployment with no administrator at all.
+ */
+export const grantRole = mutation({
+  args: { userId: v.id("users"), role: roleValidator },
+  handler: async (ctx, args) => {
+    const operator = await requireOps(ctx);
+
+    try {
+      if (operator?._id === args.userId) {
+        throw err.invalid(
+          "An operator cannot change their own role here. Use setRole for yourself.",
+        );
+      }
+
+      const target = await ctx.db.get(args.userId);
+      if (!target) throw err.notFound("That account no longer exists.");
+
+      const previous = target.role ?? null;
+      if (previous === args.role) return { previous, role: args.role };
+
+      await ctx.db.patch(args.userId, { role: args.role });
+      return { previous, role: args.role };
+    } catch (e) {
+      throw toSafeError(e);
+    }
   },
 });
 
@@ -89,7 +136,7 @@ export type IntegrityViolation = {
 export const integrityCheck = query({
   args: {},
   handler: async (ctx): Promise<IntegrityViolation[]> => {
-    await requireAdmin(ctx);
+    await requireOps(ctx);
 
     const violations: IntegrityViolation[] = [];
     const [issues, workOrders, confirmations, evidence, inspections, resolutions] =
@@ -250,6 +297,35 @@ export const integrityCheck = query({
           kind: "unknown_status",
           issueId: issue._id,
           detail: `${issue.caseNumber} has unrecognised status "${issue.status}"`,
+        });
+      }
+    }
+
+    // Cases that have spent their whole inspection budget and cannot be failed
+    // again. Not corruption — a deliberate dead end — but it is the one state an
+    // administrator has to act on, so it belongs in the same report rather than
+    // in a query somebody has to remember to run.
+    const grants = await ctx.db.query("budgetGrants").collect();
+    const grantedByIssue = new Map<string, number>();
+    for (const g of grants) {
+      grantedByIssue.set(
+        g.issueId,
+        (grantedByIssue.get(g.issueId) ?? 0) + g.attempts,
+      );
+    }
+    const failuresByIssue = new Map<string, number>();
+    for (const i of inspections) {
+      if (i.result !== "fail") continue;
+      failuresByIssue.set(i.issueId, (failuresByIssue.get(i.issueId) ?? 0) + 1);
+    }
+    for (const issue of issues) {
+      const failures = failuresByIssue.get(issue._id) ?? 0;
+      const allowance = MAX_INSPECTION_FAILURES + (grantedByIssue.get(issue._id) ?? 0);
+      if (failures >= allowance) {
+        violations.push({
+          kind: "inspection_budget_exhausted",
+          issueId: issue._id,
+          detail: `${issue.caseNumber} has failed ${failures} of ${allowance} allowed inspections and is waiting on an administrator`,
         });
       }
     }

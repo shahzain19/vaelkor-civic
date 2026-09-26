@@ -13,6 +13,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useEffect } from "react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notification-bell";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,27 +28,39 @@ function useNav() {
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
 
   const ledger = { href: "/ledger", label: "Ledger" };
+  // Public, like the ledger — the map is the same cases seen spatially.
+  const map = { href: "/map", label: "Map" };
   const home = { href: "/", label: "Overview" };
 
   if (!isAuthenticated)
-    return { items: [home, ledger], me: null, needsRole: false };
+    return { items: [home, ledger, map], me: null, needsRole: false };
 
   switch (me?.role) {
     case "contractor":
       return {
-        items: [home, ledger, { href: "/contractor", label: "Work" }],
+        items: [home, ledger, map, { href: "/contractor", label: "Work" }],
         me,
         needsRole: false,
       };
-    case "inspector":
+    // An administrator records the inspection decision and runs case oversight,
+    // so both destinations are theirs. They still cannot file a case, so the
+    // Report link stays withheld — without an explicit case this would fall
+    // through to `default` below and be handed a link the report page rejects.
+    case "admin":
       return {
-        items: [home, ledger, { href: "/inspect", label: "Inspections" }],
+        items: [
+          home,
+          ledger,
+          map,
+          { href: "/inspect", label: "Inspections" },
+          { href: "/admin", label: "Oversight" },
+        ],
         me,
         needsRole: false,
       };
     default:
       return {
-        items: [home, ledger, { href: "/report", label: "Report" }],
+        items: [home, ledger, map, { href: "/report", label: "Report" }],
         me,
         needsRole: !me?.role,
       };
@@ -156,6 +169,7 @@ export function AppHeader() {
                 </SignUpButton>
               </Show>
               <Show when="signed-in">
+                <NotificationBell />
                 {me?.role && (
                   <span className="hidden text-[0.6875rem] leading-none font-semibold tracking-[0.09em] text-muted-foreground uppercase lg:inline">
                     {me.role}

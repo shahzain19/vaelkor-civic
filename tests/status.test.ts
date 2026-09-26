@@ -115,7 +115,7 @@ describe("status: the legal path", () => {
       "completion_submitted",
     );
 
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
     await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
     expect((await readIssue(t, issueId))?.status).toBe("inspection");
     expect((await readWorkOrder(t, workOrderId))?.status).toBe("inspection");
@@ -163,7 +163,7 @@ describe("status: illegal transitions are refused", () => {
     const reporter = await makeUser(t, "citizen");
     const workOrderId = await reachVerified(t, reporter);
     const contractor = await makeUser(t, "contractor");
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
     // Work claimed, but not performed or evidenced.
@@ -231,7 +231,7 @@ describe("status: illegal transitions are refused", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
     await as(inspector)(t).mutation(api.inspections.decide, {
@@ -290,7 +290,7 @@ describe("data integrity", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
     await as(inspector)(t).mutation(api.inspections.decide, {
@@ -314,7 +314,7 @@ describe("data integrity", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     await expect(
       as(inspector)(t).mutation(api.inspections.decide, {
@@ -333,7 +333,7 @@ describe("data integrity", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     // `submitCompletion` already blocks an incomplete proof set, so to reach
     // the closure guard the evidence must disappear *after* submission. This
@@ -366,7 +366,7 @@ describe("data integrity", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     await as(inspector)(t).mutation(api.inspections.decide, {
       workOrderId,
@@ -385,7 +385,7 @@ describe("data integrity", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { workOrderId, contractor } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
 
     for (let i = 0; i < MAX_INSPECTION_FAILURES; i++) {
       await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
@@ -452,7 +452,7 @@ describe("integrity audit", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
     await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
     await as(inspector)(t).mutation(api.inspections.decide, {
       workOrderId,
@@ -479,7 +479,7 @@ describe("integrity audit", () => {
     const { issueId, workOrderId } = await reachAwaitingInspection(t, reporter);
     await t.run((ctx) => ctx.db.patch(issueId, { status: "closed" }));
 
-    const admin = await makeUser(t, "inspector");
+    const admin = await makeUser(t, "admin");
     const previous = process.env.ADMIN_CLERK_IDS;
     process.env.ADMIN_CLERK_IDS = admin.subject;
     try {
@@ -500,7 +500,7 @@ describe("integrity audit", () => {
     // Force the pair out of step.
     await t.run((ctx) => ctx.db.patch(workOrderId, { status: "open" }));
 
-    const admin = await makeUser(t, "inspector");
+    const admin = await makeUser(t, "admin");
     const previous = process.env.ADMIN_CLERK_IDS;
     process.env.ADMIN_CLERK_IDS = admin.subject;
     try {
@@ -532,7 +532,7 @@ describe("integrity audit", () => {
       });
     });
 
-    const admin = await makeUser(t, "inspector");
+    const admin = await makeUser(t, "admin");
     const previous = process.env.ADMIN_CLERK_IDS;
     process.env.ADMIN_CLERK_IDS = admin.subject;
     try {
@@ -598,7 +598,7 @@ describe("end-to-end: citizen report to closed case", () => {
     expect((await readIssue(t, issueId))?.status).toBe("completion_submitted");
 
     // 5. The case reaches the inspector's queue, marked decidable.
-    const inspector = await makeUser(t, "inspector", "Inspector");
+    const inspector = await makeUser(t, "admin", "Inspector");
     const queue = await as(inspector)(t).query(api.inspections.listQueue, {});
     const queued = queue.find((w) => w._id === workOrderId);
     expect(queued).toBeTruthy();
@@ -631,7 +631,7 @@ describe("end-to-end: citizen report to closed case", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen", "Reporter");
     const { issueId, workOrderId } = await reachAwaitingInspection(t, reporter);
-    const inspector = await makeUser(t, "inspector");
+    const inspector = await makeUser(t, "admin");
     await as(inspector)(t).mutation(api.inspections.beginInspection, { workOrderId });
     await as(inspector)(t).mutation(api.inspections.decide, {
       workOrderId,

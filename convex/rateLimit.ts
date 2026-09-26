@@ -34,6 +34,8 @@ export const LIMITS = {
   inspectionDecide: { max: 40, windowMs: 60 * 60 * 1000 },
   /** Role changes, to stop a user cycling roles to probe every surface. */
   roleChange: { max: 10, windowMs: 60 * 60 * 1000 },
+  /** Marking notifications read. Cheap, but a tight loop here is a write amplifier. */
+  notificationRead: { max: 120, windowMs: 60 * 60 * 1000 },
   /** Reads that mint signed storage URLs. */
   signedUrls: { max: 300, windowMs: 60 * 60 * 1000 },
 } as const;

@@ -23,6 +23,14 @@ export const LIMITS = {
   /** Hard ceiling on any client-supplied page size. */
   pageSize: { def: 20, max: 100 },
   nearby: { def: 60, max: 100, scan: 500 },
+  /**
+   * The map's viewport query.
+   *
+   * A larger `scan` than `nearby` because a map legitimately wants to draw
+   * every case in view, not just the closest 500 in time, and the response is
+   * a bare coordinate list rather than hydrated case records.
+   */
+  map: { def: 400, max: 600, scan: 3000 },
 } as const;
 
 /* Coordinates -------------------------------------------------------------- */
@@ -38,6 +46,36 @@ export function assertCoordinate(lat: number, lng: number): void {
   }
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
     throw err.invalid("That location is not a valid point on the map.");
+  }
+}
+
+/**
+ * A map viewport, as four independent corner coordinates.
+ *
+ * Corners rather than a centre + zoom because that is what a pan/zoom gesture
+ * actually produces, and re-deriving a box from a centre would mean trusting
+ * the client's zoom arithmetic.
+ *
+ * The height ceiling is the point of this function. `west > east` is *not*
+ * rejected: that is the legitimate representation of a viewport crossing the
+ * antimeridian, and the query handles the wrap. What is rejected is a box tall
+ * enough to be the whole planet, which is the map equivalent of
+ * `listNearby`'s radius clamp — an unbounded "show me everything" request.
+ */
+export function assertViewport(bounds: {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}): void {
+  assertCoordinate(bounds.north, bounds.east);
+  assertCoordinate(bounds.south, bounds.west);
+
+  if (bounds.south > bounds.north) {
+    throw err.invalid("That map area is not a valid part of the world.");
+  }
+  if (bounds.north - bounds.south > 180) {
+    throw err.invalid("That map area is too large to load.");
   }
 }
 

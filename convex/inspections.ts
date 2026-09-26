@@ -50,7 +50,7 @@ export const listQueue = query({
     // The queue enumerates every case awaiting inspection, with its evidence
     // kinds and inspection history. That is an internal work list, so it is
     // gated here as well as behind the /inspect route.
-    await requireRole(ctx, "inspector", "Only inspectors can see the inspection queue");
+    await requireRole(ctx, "admin", "Only administrators can see the inspection queue");
 
     const rows = await Promise.all(
       AWAITING_INSPECTION.map((status) =>
@@ -83,8 +83,8 @@ export const beginInspection = mutation({
   handler: async (ctx, args) => {
     const inspector = await requireRole(
       ctx,
-      "inspector",
-      "Only inspectors can start an inspection",
+      "admin",
+      "Only administrators can start an inspection",
     );
 
     try {
@@ -111,7 +111,7 @@ export const getForWorkOrder = query({
   handler: async (ctx, args) => {
     // Inspector-only: this view carries the full evidence set and the
     // inspection history needed to decide a case.
-    await requireRole(ctx, "inspector", "Only inspectors can see the inspection record");
+    await requireRole(ctx, "admin", "Only administrators can see the inspection record");
 
     const wo = await ctx.db.get(args.workOrderId);
     if (!wo) return null;
@@ -169,8 +169,8 @@ export const decide = mutation({
   handler: async (ctx, args) => {
     const inspector = await requireRole(
       ctx,
-      "inspector",
-      "Only inspectors can decide",
+      "admin",
+      "Only administrators can decide",
     );
     await enforceRateLimit(ctx, "inspectionDecide", inspector._id);
 

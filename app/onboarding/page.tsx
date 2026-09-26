@@ -10,9 +10,12 @@ import { api } from "@/convex/_generated/api";
 import { Banner, LiveRegion } from "@/components/feedback";
 import { PageHeader, PageShell, Section } from "@/components/shell";
 import { Button } from "@/components/ui/button";
+import { isSelfSelectableRole, type SelfSelectableRole } from "@/lib/civic";
 import { cn } from "@/lib/utils";
 
-type Role = "citizen" | "contractor" | "inspector";
+// Only the self-selectable roles. `admin` is grant-only, and `setRole`
+// refuses it from the client regardless of what this page offers.
+type Role = SelfSelectableRole;
 
 const ROLES: {
   value: Role;
@@ -35,13 +38,6 @@ const ROLES: {
     cannot: "Confirm reports or decide inspections.",
     lands: "/contractor",
   },
-  {
-    value: "inspector",
-    label: "Inspector",
-    does: "Review completion evidence, pass or fail each case.",
-    cannot: "Accept work or file execution evidence.",
-    lands: "/inspect",
-  },
 ];
 
 export default function OnboardingPage() {
@@ -55,7 +51,7 @@ export default function OnboardingPage() {
   // Adjust the selection during render when the persisted role arrives, rather
   // than syncing it from an effect.
   const [synced, setSynced] = useState<Role | undefined>(undefined);
-  if (me?.role && me.role !== synced) {
+  if (me?.role && isSelfSelectableRole(me.role) && me.role !== synced) {
     setSynced(me.role);
     setRoleLocal(me.role);
   }

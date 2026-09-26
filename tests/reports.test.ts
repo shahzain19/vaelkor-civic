@@ -617,3 +617,65 @@ describe("rate limiting", () => {
     ).rejects.toThrow(/hit the limit/i);
   });
 });
+
+/**
+ * Error transport.
+ *
+ * Convex decides whether the client sees an application error or a crashed
+ * function by the `Symbol.for("ConvexError")` marker. When `AppError` extended
+ * plain `Error`, every routine rejection — duplicate report, rate limit,
+ * illegal transition — was reported as `Uncaught AppError` in the dashboard
+ * and raised a server error in the browser instead of the sentence we wrote.
+ */
+describe("error transport", () => {
+  it("surfaces a business rejection as an application error, not a crash", async () => {
+    const t = setup();
+    const citizen = await makeUser(t, "citizen");
+    const issueId = await fileReport(t, citizen);
+
+    const error = await fileReport(t, citizen, {
+      address: "same spot again",
+    }).catch((e: unknown) => e);
+
+    // The marker Convex checks on the client.
+    expect(error).toBeInstanceOf(Error);
+    expect(Symbol.for("ConvexError") in (error as object)).toBe(true);
+    expect((error as { name: string }).name).toBe("AppError");
+
+    // A human sentence, not a stack trace or a document id. Matched against the
+    // shape of a stack frame rather than the bare word "at", which occurs in the
+    // ordinary prose of the message itself ("reported this at moments ago").
+    expect((error as Error).message).toMatch(/already reported/i);
+    expect((error as Error).message).not.toMatch(/\n\s+at\s/);
+    expect((error as Error).message).not.toMatch(/\.ts:\d+(:\d+)?/);
+    expect((error as Error).message).not.toMatch(/convex\//);
+
+    // Machine-readable code, so the UI need not parse prose.
+    const data = (error as { data: { code: string; message: string } }).data;
+    expect(data.code).toBe("conflict");
+    expect(data.message).toBe((error as Error).message);
+    void issueId;
+  });
+
+  it("carries a retry countdown on a rate limit", async () => {
+    const t = setup();
+    const citizen = await makeUser(t, "citizen");
+    for (let i = 0; i < RATE_LIMITS.reportCreate.max; i++) {
+      await fileReport(t, citizen, {
+        address: `${i} Example Street`,
+        lat: 51.5 + i * 0.05,
+        lng: -0.12,
+      });
+    }
+
+    const error = await fileReport(t, citizen, {
+      address: "one too many",
+      lat: 53.5,
+      lng: -0.12,
+    }).catch((e: unknown) => e);
+
+    const data = (error as { data: { code: string; retryAfter?: number } }).data;
+    expect(data.code).toBe("rate_limited");
+    expect(data.retryAfter).toBeGreaterThan(0);
+  });
+});

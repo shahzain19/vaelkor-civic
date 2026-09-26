@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
 import type * as errors from "../errors.js";
 import type * as evidence from "../evidence.js";
@@ -16,6 +17,9 @@ import type * as inspections from "../inspections.js";
 import type * as issues from "../issues.js";
 import type * as lib from "../lib.js";
 import type * as lifecycle from "../lifecycle.js";
+import type * as notifications from "../notifications.js";
+import type * as notify from "../notify.js";
+import type * as oversight from "../oversight.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as users from "../users.js";
 import type * as validation from "../validation.js";
@@ -29,6 +33,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  analytics: typeof analytics;
   auth: typeof auth;
   errors: typeof errors;
   evidence: typeof evidence;
@@ -36,6 +41,9 @@ declare const fullApi: ApiFromModules<{
   issues: typeof issues;
   lib: typeof lib;
   lifecycle: typeof lifecycle;
+  notifications: typeof notifications;
+  notify: typeof notify;
+  oversight: typeof oversight;
   rateLimit: typeof rateLimit;
   users: typeof users;
   validation: typeof validation;

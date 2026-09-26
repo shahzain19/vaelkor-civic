@@ -22,13 +22,28 @@
 import { v } from "convex/values";
 import type { Value } from "convex/values";
 import { err } from "./errors";
-import type { MutationCtx } from "./_generated/server";
+import { notifyForTransition } from "./notify";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
 /* Vocabulary --------------------------------------------------------------- */
 
-export const ROLES = ["citizen", "contractor", "inspector"] as const;
-export type Role = (typeof ROLES)[number];
+/**
+ * The civic roles, plus the staff role that carries oversight.
+ *
+ * Re-exported from `lib/civic` so the backend and the UI read one list. `admin`
+ * is deliberately not a peer of the civic roles: it grants no civic capability
+ * — an administrator cannot report, claim work, or pass an inspection — only the
+ * ability to unblock a case that has exhausted its inspection budget. It is also
+ * never self-selectable; see `users.setRole`.
+ */
+export {
+  ROLES,
+  SELF_SELECTABLE_ROLES,
+  LEGACY_ROLES,
+  normalizeRole,
+  type Role,
+} from "../lib/civic";
 
 export const ISSUE_STATUSES = [
   "reported",
@@ -42,6 +57,9 @@ export const ISSUE_STATUSES = [
   "closed",
 ] as const;
 export type IssueStatus = (typeof ISSUE_STATUSES)[number];
+
+export const SEVERITIES = ["low", "medium", "high"] as const;
+export type Severity = (typeof SEVERITIES)[number];
 
 export const WORK_ORDER_STATUSES = [
   "open",
@@ -208,6 +226,11 @@ export async function transitionLifecycle(
     message,
     createdAt: now,
   });
+
+  // Written after the state, in the same mutation. Being inside this function
+  // rather than at each call site is what guarantees no transition can move a
+  // case without telling whoever is waiting on it.
+  await notifyForTransition(ctx, { issueId, action, actorId });
 }
 
 /**
@@ -269,10 +292,20 @@ async function assertClosable(
  */
 export const MAX_INSPECTION_FAILURES = 3;
 
-export async function assertFailureBudget(
-  ctx: MutationCtx,
+/**
+ * The effective allowance for a case: the base budget plus everything an
+ * administrator has granted it.
+ *
+ * Derived rather than stored, so a case cannot be left flagged as blocked after
+ * the failures that blocked it have been accounted for, or un-flagged while they
+ * still stand. Returns the count and the allowance together because the
+ * escalation queue needs both, and recomputing the allowance in the UI would mean
+ * shipping the rule to the client.
+ */
+export async function inspectionFailureAllowance(
+  ctx: QueryCtx | MutationCtx,
   issueId: Id<"issues">,
-): Promise<void> {
+): Promise<{ failures: number; allowance: number; granted: number }> {
   const failures = await ctx.db
     .query("inspections")
     .withIndex("by_issue_result", (q) =>
@@ -280,11 +313,35 @@ export async function assertFailureBudget(
     )
     .collect();
 
-  if (failures.length >= MAX_INSPECTION_FAILURES) {
-    throw err.precondition(
-      "This case has failed inspection too many times and needs an administrator.",
-    );
-  }
+  const grants = await ctx.db
+    .query("budgetGrants")
+    .withIndex("by_issue", (q) => q.eq("issueId", issueId))
+    .collect();
+
+  const granted = grants.reduce((sum, g) => sum + g.attempts, 0);
+  return {
+    failures: failures.length,
+    allowance: MAX_INSPECTION_FAILURES + granted,
+    granted,
+  };
+}
+
+export async function assertFailureBudget(
+  ctx: MutationCtx,
+  issueId: Id<"issues">,
+): Promise<void> {
+  const { failures, allowance, granted } = await inspectionFailureAllowance(
+    ctx,
+    issueId,
+  );
+
+  if (failures < allowance) return;
+
+  throw err.precondition(
+    granted > 0
+      ? "This case has used every inspection attempt allowed to it and needs an administrator to allow another."
+      : "This case has failed inspection too many times and needs an administrator.",
+  );
 }
 
 /* Exported for tests and the schema ---------------------------------------- */

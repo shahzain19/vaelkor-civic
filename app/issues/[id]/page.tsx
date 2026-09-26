@@ -18,7 +18,7 @@ import { ActionButton, Banner, EmptyState, LiveRegion } from "@/components/feedb
 import { FileDrop } from "@/components/form";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, type Role } from "@/lib/civic";
 import { formatCoord } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -385,7 +385,7 @@ export default function CaseFilePage({
 
 type Me = {
   _id: string;
-  role?: "citizen" | "contractor" | "inspector";
+  role?: Role;
   name?: string;
 } | null | undefined;
 

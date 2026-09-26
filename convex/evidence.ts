@@ -5,6 +5,7 @@ import { logActivity } from "./lib";
 import { requireUser } from "./auth";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
+import { normalizeRole } from "./lifecycle";
 import { LIMITS, assertFreshUpload, cleanOptionalString } from "./validation";
 
 /**
@@ -92,8 +93,10 @@ export const attach = mutation({
           break;
         }
         case "inspection": {
-          if (user.role !== "inspector") {
-            throw err.forbidden("Only inspectors can file inspection evidence.");
+          if (normalizeRole(user.role) !== "admin") {
+            throw err.forbidden(
+              "Only administrators can file inspection evidence.",
+            );
           }
           if (
             !workOrder ||

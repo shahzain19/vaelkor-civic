@@ -19,7 +19,7 @@ import { CaseLedger } from "@/components/case-list";
 import { Skeleton } from "@/components/feedback";
 import { PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD, PHASES } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, PHASES, ROLE_LABEL, type Role } from "@/lib/civic";
 import {
   LOCATION_PRIVACY_QUERY_M,
   LOCATION_PRIVACY_STORE_M,
@@ -30,6 +30,20 @@ import { cn } from "@/lib/utils";
  * Roles. Every line here is enforced by the server, not by the interface — the
  * page states the boundary so nobody has to discover it by hitting an error.
  */
+/**
+ * Where each role's work happens.
+ *
+ * Kept separate from the `ROLES` table below, which is deliberately civic-only:
+ * it explains what reporting, repairing and inspecting mean to the public.
+ * Oversight is a staff function rather than a civic one, so it is listed here
+ * rather than given a row of marketing copy.
+ */
+const WORKSPACE_BY_ROLE: Record<Role, string> = {
+  citizen: "/report",
+  contractor: "/contractor",
+  admin: "/admin",
+};
+
 const ROLES = [
   {
     role: "citizen" as const,
@@ -48,8 +62,8 @@ const ROLES = [
     href: "/contractor",
   },
   {
-    role: "inspector" as const,
-    label: "Inspector",
+    role: "admin" as const,
+    label: "Administrator",
     icon: Gavel,
     can: "Compare before and after evidence against a checklist, then pass or fail each case.",
     cannot: "Accept work or file execution evidence.",
@@ -91,7 +105,8 @@ export default function LandingPage() {
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const recent = useQuery(api.issues.listRecent, { limit: 4 });
 
-  const workspace = ROLES.find((r) => r.role === me?.role)?.href;
+  const workspace = me?.role ? WORKSPACE_BY_ROLE[me.role] : undefined;
+  const roleName = me?.role ? ROLE_LABEL[me.role] : null;
 
   return (
     <PageShell width="wide">
@@ -330,7 +345,7 @@ export default function LandingPage() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-[44ch] text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">
             {workspace
-              ? `You are set up as ${me?.role}. Your workspace is one click away, and the ledger stays public.`
+              ? `You are set up as ${roleName}. Your workspace is one click away, and the ledger stays public.`
               : "Read the ledger without an account. File a report when you see something wrong — it takes a photo."}
           </p>
           <div className="flex shrink-0 flex-wrap items-center gap-2.5">
