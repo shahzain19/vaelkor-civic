@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,33 +14,6 @@ import { useEffect } from "react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-/** A single hairline mark. The wordmark is a logo, not a headline. */
-function Glyph({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-      className={cn("size-5", className)}
-    >
-      <path
-        d="M3 20.5h18M5.5 20.5V9.8L12 4l6.5 5.8v10.7"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.6 20.5v-5.2h4.8v5.2"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /**
  * Navigation is derived from the user's role, not from the feature list.
@@ -106,7 +80,17 @@ export function AppHeader() {
           href="/"
           className="order-1 flex shrink-0 items-center gap-2 rounded-[var(--radius)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
-          <Glyph className="text-foreground" />
+          <Image
+            src="/vaelkor-civic.png"
+            alt=""
+            width={512}
+            height={512}
+            priority
+            // Without an explicit `sizes`, next/image assumes the image may be
+            // rendered full-bleed and ships a 640w variant for a 28px mark.
+            sizes="28px"
+            className="size-7 shrink-0 rounded-[3px] object-cover"
+          />
           <span className="text-[0.8125rem] leading-none font-semibold tracking-[0.13em] uppercase">
             Vaelkor
             <span className="ml-1.5 font-normal text-muted-foreground">

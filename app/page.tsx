@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
 import {
@@ -99,7 +100,19 @@ export default function LandingPage() {
           before deciding anything. */}
       <div className="grid gap-10 pt-12 pb-4 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-16 lg:pb-8">
         <div className="max-w-[46ch]">
-          <div className="eyebrow mb-3">Municipal fault reporting</div>
+          <div className="mb-4 flex items-center gap-2.5">
+            <Image
+              src="/vaelkor-civic.png"
+              alt=""
+              width={512}
+              height={512}
+              // No `priority`: the header already preloads this exact URL, and a
+              // second preload link for the same resource is pure overhead.
+              sizes="36px"
+              className="size-9 shrink-0 rounded-[4px] object-cover"
+            />
+            <div className="eyebrow">Municipal fault reporting</div>
+          </div>
           <h1 className="text-[2.1rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance sm:text-[2.9rem]">
             Street faults, reported, proven, and signed off in public.
           </h1>
