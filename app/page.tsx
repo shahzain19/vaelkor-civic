@@ -621,6 +621,17 @@ export default function LandingPage() {
           </div>
         </div>
       </Section>
+
+      {/* Closing statement. Placed after the call to action rather than before
+          it: the page argues its case first, and this is what is left once a
+          reader has run out of objections. The three lines under it name where
+          the power actually sits, so the slogan is a summary of the mechanism
+          rather than a claim the product does not otherwise make. */}
+      <section className="border-t border-border pt-10 pb-14 sm:pt-14 sm:pb-20">
+        <h2 className="text-[2rem] leading-[0.95] font-semibold tracking-[-0.04em] text-center uppercase sm:text-[3.25rem] lg:text-[4rem]">
+          Power to the people
+        </h2>
+      </section>
     </PageShell>
   );
 }
