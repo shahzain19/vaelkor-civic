@@ -84,6 +84,8 @@ export const CATEGORIES = [
   { value: "garbage", label: "Garbage", short: "Waste" },
   { value: "drainage", label: "Drainage", short: "Drainage" },
   { value: "streetlight", label: "Streetlight", short: "Light" },
+  { value: "public_spaces", label: "Public spaces", short: "Spaces" },
+  { value: "other", label: "Other infrastructure", short: "Other" },
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number]["value"];
@@ -94,6 +96,65 @@ export function categoryLabel(category: string): string {
 
 export function categoryShort(category: string): string {
   return CATEGORIES.find((c) => c.value === category)?.short ?? category;
+}
+
+/**
+ * The Civic Network composer's category labels.
+ *
+ * Derived from `CATEGORIES` rather than written out again. It was a hand-typed
+ * `Record` holding the same six pairs, which is one more place to forget a
+ * category — and a category present in the schema but absent here would render
+ * as its raw enum value in the composer.
+ */
+export const POST_CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.value, c.label]),
+);
+
+/**
+ * Feed filters for the Civic Network.
+ *
+ * `null` is the "All" case, which is deliberately not an empty-string sentinel:
+ * Convex indexes cannot be queried with `undefined` meaning "any category" the
+ * way an SQL `WHERE` can, so the feed branches on the absence of a filter and
+ * reads a different index. A filter value that is falsy would collapse both
+ * branches into one and silently return nothing.
+ */
+export const NETWORK_FILTERS = [
+  { value: null, label: "All" },
+  { value: "road", label: "Roads" },
+  { value: "drainage", label: "Water" },
+  { value: "garbage", label: "Waste" },
+  { value: "streetlight", label: "Lighting" },
+  { value: "public_spaces", label: "Spaces" },
+  { value: "other", label: "Other" },
+] as const satisfies readonly {
+  value: (typeof CATEGORIES)[number]["value"] | null;
+  label: string;
+}[];
+
+export type NetworkFilter = (typeof NETWORK_FILTERS)[number]["value"];
+
+/** Narrows the union to the values that actually name a category. */
+export function isNetworkFilter(
+  value: string | null,
+): value is Exclude<NetworkFilter, null> {
+  return value !== null && CATEGORIES.some((c) => c.value === value);
+}
+
+/** The confirmation gesture's name. Fixed, because the phrasing is the feature. */
+export const AFFECTED_LABEL = "I'm affected too";
+
+/**
+ * "47 residents affected" — the count as a person would say it.
+ *
+ * Pluralisation is the whole reason this is a function. `1 residents affected` is
+ * the kind of small wrongness that makes an otherwise serious interface read as
+ * a prototype, and it appears on every single post.
+ */
+export function affectedLabel(count: number): string {
+  const n = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  if (n === 0) return "No confirmations yet";
+  return `${n} ${n === 1 ? "resident" : "residents"} affected`;
 }
 
 /** All lifecycle states, in order. */

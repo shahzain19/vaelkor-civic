@@ -13,6 +13,8 @@ export const categoryValidator = v.union(
   v.literal("garbage"),
   v.literal("drainage"),
   v.literal("streetlight"),
+  v.literal("public_spaces"),
+  v.literal("other"),
 );
 
 export const severityValidator = v.union(
@@ -98,7 +100,9 @@ export default defineSchema({
     // Supports the oversight queue, which orders by what moved most recently.
     .index("by_updatedAt", ["updatedAt"])
     // Duplicate-report detection scans only the reporter's own recent cases.
-    .index("by_reporter", ["reporterId"]),
+    .index("by_reporter", ["reporterId"])
+    // Category filter for Civic Pulse and other views.
+    .index("by_category", ["category"]),
 
   confirmations: defineTable({
     issueId: v.id("issues"),
@@ -351,10 +355,10 @@ export default defineSchema({
     workOrderId: v.optional(v.id("workOrders")),
     kind: notificationKindValidator,
     /**
-     * Denormalised so the notifications page renders without a lookup per row.
-     * Copied from the issue at write time and never expected to stay in sync
-     * with a later edit — a case number is permanent anyway.
-     */
+      * Denormalised so the notifications page renders without a lookup per row.
+      * Copied from the issue at write time and never expected to stay in sync
+      * with a later edit — a case number is permanent anyway.
+      */
     caseNumber: v.string(),
     title: v.string(),
     body: v.string(),
@@ -365,4 +369,111 @@ export default defineSchema({
     .index("by_user", ["userId", "createdAt"])
     // Supports the unread badge without loading the recipient's whole history.
     .index("by_user_unread", ["userId", "readAt"]),
+
+  /**
+   * Civic Network posts.
+   *
+   * A post is the public voice of a citizen in the network. It may stand alone
+   * (an update, a question, a civic observation) or attach to an existing case.
+   * Posts never duplicate case data — they reference it, and read it.
+   *
+   * There is deliberately **no `status` field here.** A post linked to a case
+   * shows that case's stage, and storing a copy of it on the post row would
+   * create a second source of truth for a fact the lifecycle already owns
+   * authoritatively — one that silently disagrees the moment a contractor starts
+   * work. The stage is read from the case at query time instead, which is why
+   * "the post says in progress but the case is closed" is unrepresentable
+   * rather than merely unlikely.
+   */
+  posts: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    body: v.string(),
+    category: categoryValidator,
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
+    address: v.optional(v.string()),
+    /** Optional link to a case. Absent means a standalone post. */
+    issueId: v.optional(v.id("issues")),
+    /**
+     * Denormalised tallies, written in the same mutation as the row they
+     * summarise — the same contract `issues.confirmationCount` already keeps.
+     * They exist so the feed reads a page of posts without a per-post count
+     * query, and `admin.integrityCheck` re-derives them from the underlying
+     * rows so a drift cannot hide.
+     */
+    confirmationCount: v.number(),
+    commentCount: v.number(),
+    evidenceCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_author", ["authorId"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_category", ["category"])
+    .index("by_issue", ["issueId"]),
+
+  /**
+   * Comments on civic posts.
+   *
+   * Flat — no nesting. The goal is useful local information, not a thread
+   * structure. A comment belongs to one post and one author.
+   */
+  comments: defineTable({
+    postId: v.id("posts"),
+    authorId: v.id("users"),
+    body: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_post", ["postId"])
+    .index("by_author", ["authorId"]),
+
+  /**
+   * "I'm affected too" — civic confirmations on posts.
+   *
+   * Separate from `confirmations` (which is for issues) because a post is not
+   * necessarily a case. A citizen confirms they are affected by what a post
+   * describes. Toggleable, one per user per post.
+   *
+   * Not a like. "Liked" is applause; "I'm affected too" is a claim about the
+   * speaker's own circumstances, and it is the claim the product acts on. The
+   * `by_post_user` index is what makes the uniqueness check a single indexed
+   * read, and it is also the one index in the network layer that a
+   * double-submit must not be able to violate — see `posts.toggleAffected`.
+   */
+  postConfirmations: defineTable({
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_post", ["postId"])
+    .index("by_post_user", ["postId", "userId"]),
+
+  /**
+   * A photograph a citizen attached to a Civic Network post.
+   *
+   * Deliberately a separate table from `evidence` rather than a nullable
+   * `postId` bolted onto it. Every `evidence` row belongs to a case, and
+   * `evidence.attach` enforces that by checking the attachment's `kind`
+   * against the case's lifecycle stage and the attaching user's role — that
+   * gate is the chain of custody, and it is the reason a "before" photo cannot
+   * be attached before work is ordered. A post attachment has no such
+   * relationship: any signed-in citizen may photograph what they can see, with
+   * no stage and no role. Loosening `evidence` to accommodate that would
+   * weaken an invariant the whole case dossier rests on.
+   *
+   * No second file-storage system is implied by this table. The bytes still go
+   * to the same Convex storage and through the same `assertFreshUpload`
+   * validation; only the metadata lives apart.
+   */
+  postEvidence: defineTable({
+    postId: v.id("posts"),
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    /** Optional caption. A photograph with no words attached is still evidence. */
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_post", ["postId"]),
 });

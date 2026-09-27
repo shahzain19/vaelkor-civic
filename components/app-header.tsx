@@ -30,17 +30,19 @@ function useNav() {
   const ledger = { href: "/ledger", label: "Ledger" };
   // Public, like the ledger — the map is the same cases seen spatially.
   const map = { href: "/map", label: "Map" };
+  const network = { href: "/network", label: "Network" };
+  const pulse = { href: "/network/pulse", label: "Pulse" };
   const home = { href: "/", label: "Overview" };
   const about = { href: "/about", label: "About" };
   const hackathon = { href: "/hackathon", label: "Hackathon" };
 
   if (!isAuthenticated)
-    return { items: [home, ledger, map, about, hackathon], me: null, needsRole: false };
+    return { items: [home, ledger, map, network, pulse, about, hackathon], me: null, needsRole: false };
 
   switch (me?.role) {
     case "contractor":
       return {
-        items: [home, ledger, map, { href: "/contractor", label: "Work" }, hackathon],
+        items: [home, ledger, map, network, pulse, { href: "/contractor", label: "Work" }, hackathon],
         me,
         needsRole: false,
       };
@@ -54,6 +56,8 @@ function useNav() {
           home,
           ledger,
           map,
+          network,
+          pulse,
           { href: "/inspect", label: "Inspections" },
           { href: "/admin", label: "Oversight" },
           hackathon,
@@ -63,7 +67,7 @@ function useNav() {
       };
     default:
       return {
-        items: [home, ledger, map, { href: "/report", label: "Report" }, hackathon],
+        items: [home, ledger, map, network, pulse, { href: "/report", label: "Report" }, hackathon],
         me,
         needsRole: !me?.role,
       };

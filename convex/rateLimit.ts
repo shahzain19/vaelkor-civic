@@ -40,6 +40,30 @@ export const LIMITS = {
   signedUrls: { max: 300, windowMs: 60 * 60 * 1000 },
   /** Contributing to the community fund. */
   fundContribute: { max: 20, windowMs: 60 * 60 * 1000 },
+  /**
+   * Civic Network posts.
+   *
+   * Looser than `reportCreate` on purpose. Filing a case is a considered act
+   * that needs a photograph; a post is a sentence. The product wants a
+   * neighbourhood talking, and the ceiling here is still far below anything a
+   * person would actually do in an hour.
+   */
+  postCreate: { max: 20, windowMs: 60 * 60 * 1000 },
+  /**
+   * "I'm affected too" toggles.
+   *
+   * One budget covers both directions. A toggle costs two requests — the click
+   * that adds and the click that removes — so a person legitimately spending
+   * their hour moving between posts must not be throttled by a limit set as if
+   * each call were a separate endorsement.
+   */
+  postAffected: { max: 60, windowMs: 60 * 60 * 1000 },
+  /**
+   * Comments. Held below `postCreate` because a comment is the cheapest way to
+   * fill a post with noise and the least load-bearing: a good post stands
+   * without one.
+   */
+  commentCreate: { max: 40, windowMs: 60 * 60 * 1000 },
 } as const;
 
 export type LimitName = keyof typeof LIMITS;

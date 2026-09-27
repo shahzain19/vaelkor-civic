@@ -31,6 +31,24 @@ export const LIMITS = {
    * a bare coordinate list rather than hydrated case records.
    */
   map: { def: 400, max: 600, scan: 3000 },
+  /**
+   * A Civic Network post.
+   *
+   * `body` has a floor of 1 rather than the 10 that `description` uses. A post is
+   * a statement — "still broken this morning" is a complete and useful civic
+   * report, and demanding a paragraph of it would be a product decision dressed
+   * up as a validation rule. The ceiling is the real constraint: an unbounded
+   * post is a storage cost and an unreadable card.
+   */
+  postBody: { min: 1, max: 2000 },
+  /**
+   * A comment.
+   *
+   * Short by design. The examples this feature exists for — "broken three
+   * weeks", "extends another 200m" — are all under forty characters, and a cap
+   * is what keeps a flat comment list readable.
+   */
+  comment: { min: 1, max: 600 },
 } as const;
 
 /* Coordinates -------------------------------------------------------------- */

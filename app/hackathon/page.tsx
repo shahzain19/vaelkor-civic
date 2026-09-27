@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  BarChart,
   Camera,
   CheckCircle2,
   ClipboardCheck,
@@ -16,6 +17,7 @@ import {
   Layers,
   Lock,
   MapPin,
+  MessageSquare,
   Route,
   ShieldCheck,
   Users,
@@ -71,6 +73,39 @@ const FEATURES = [
     icon: ShieldCheck,
     title: "Anti-gaming by construction",
     body: `Confirmations lock the moment a work order exists, so popularity can never inflate a case that is already being worked. Every lifecycle edge is an asserted transition, not a free-text status.`,
+  },
+];
+
+const NETWORK_FEATURES = [
+  {
+    icon: MessageSquare,
+    title: "Civic posts",
+    body: "Citizens post issues, updates, or observations with photos. Posts are public, categorical, and can link to existing ledger cases.",
+  },
+  {
+    icon: Users,
+    title: "\"I'm affected too\"",
+    body: "Not a like — a civic confirmation. One per person. Counts show \"47 residents affected\" and drive visibility in Civic Pulse.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Comments",
+    body: "Flat, useful local information — \"this has been broken for three weeks\", \"repair started this morning\". No nested threads.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Work order integration",
+    body: "A post linked to a case shows live status, work order progress, contractor name, and before/after evidence — no need to leave the post.",
+  },
+  {
+    icon: BarChart,
+    title: "Civic Pulse",
+    body: "Real-time analytics: active cases, resolved, being worked on, posts, confirmations, comments — all counted from live rows, never fabricated.",
+  },
+  {
+    icon: Camera,
+    title: "Before / After proof",
+    body: "Posts linked to cases surface the work order's before and after photographs side by side — accountability made visible.",
   },
 ];
 
@@ -164,6 +199,30 @@ const JUDGE_TOUR = [
     href: "/inspect",
     cta: "/inspect",
   },
+  {
+    n: "8",
+    role: "Citizen — sign up",
+    title: "Open the Civic Network",
+    body: `Go to /network — no account needed to read. See posts from the community, filter by category, browse Civic Pulse for live analytics.`,
+    href: "/network",
+    cta: "/network",
+  },
+  {
+    n: "9",
+    role: "Citizen",
+    title: "Create a post & link a case",
+    body: "Create a post about a road issue, attach a photo, and link it to an existing case from the ledger. The post now shows the case's live status, work order, and before/after evidence.",
+    href: "/network/create",
+    cta: "/network/create",
+  },
+  {
+    n: "10",
+    role: "Citizen",
+    title: "Confirm & comment",
+    body: `Hit "I'm affected too" on a post — the count increments. Add a comment with local knowledge. Watch the post appear in Civic Pulse.`,
+    href: "/network",
+    cta: "/network",
+  },
 ];
 
 const ARCHITECTURE = [
@@ -213,6 +272,10 @@ const REAL_VS_SIM = [
   { real: true, label: "Funding ledger and the 80% claim gate", note: "Real pledge records, enforced server-side." },
   { real: true, label: "Photo evidence on the work order", note: "Real Convex file storage with signed URLs." },
   { real: true, label: "Role separation and admin oversight", note: "Enforced on the server, not just hidden in the UI." },
+  { real: true, label: "Civic Network posts, confirmations, comments", note: "Real mutations, real-time counts, linked to live cases." },
+  { real: true, label: "Civic Pulse analytics", note: "Counts from live database rows via paginate({ numItems: 0 })." },
+  { real: true, label: "Work order integration on posts", note: "Linked posts read case status, work order, and evidence live." },
+  { real: true, label: "Before/after evidence on linked posts", note: "Surfaces the work order's actual evidence, not copies." },
   { real: false, label: "Moving actual money", note: "Pledges and claims are records of intent. No payment gateway, and the payout table is not written yet. The bank details shown are placeholders." },
   { real: false, label: "Anonymous location privacy", note: "Coordinates are stored as reported so the pin lands on the fault. We have not added coordinate jitter yet, so a report is effectively public at block level." },
   { real: false, label: "Email and SMS delivery", note: "Notifications are in-app only at this stage." },
@@ -388,6 +451,66 @@ export default function HackathonPage() {
               </div>
             </div>
           ))}
+        </div>
+      </Section>
+
+      {/* ── Civic Network ──────────────────────────────────────────── */}
+      <Section label="Civic Network">
+        <div className="mb-5 max-w-[62ch] space-y-3 text-[0.9375rem] leading-relaxed text-pretty">
+          <p>
+            The Civic Network is the public accountability layer of VAELKOR CIVIC.
+            It turns the ledger into a living civic space where citizens surface
+            problems, communities verify them, and progress becomes visible — all
+            without leaving the post.
+          </p>
+          <p>
+            <strong>
+              The core loop: Report → Post → Community → Verification → Work Order → Progress → Resolution.
+            </strong>
+          </p>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {NETWORK_FEATURES.map((f) => (
+            <div key={f.title} className="flex gap-3.5">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-muted">
+                <f.icon className="size-4 text-foreground" aria-hidden />
+              </span>
+              <div>
+                <p className="text-[0.875rem] font-medium">{f.title}</p>
+                <p className="mt-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+                  {f.body}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Visual: The larger system */}
+        <div className="mt-8 rounded-[var(--radius)] border border-border bg-card p-5">
+          <p className="text-[0.75rem] font-mono text-muted-foreground">The system</p>
+          <div className="mt-4 space-y-3 text-[0.875rem]">
+            {[
+              { label: "Citizen", icon: Users },
+              { label: "Civic Network", icon: MessageSquare },
+              { label: "Verified Issue", icon: CheckCircle2 },
+              { label: "Work Order", icon: ClipboardCheck },
+              { label: "Contractor", icon: HardHat },
+              { label: "Evidence", icon: Camera },
+              { label: "Resolution", icon: ShieldCheck },
+            ].map((step, i) => (
+              <div key={step.label} className="flex items-center gap-3">
+                {i > 0 && (
+                  <span className="flex size-6 shrink-0 items-center justify-center text-muted-foreground">
+                    ↓
+                  </span>
+                )}
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-border bg-muted">
+                  <step.icon className="size-4 text-foreground" aria-hidden />
+                </span>
+                <span className="font-medium">{step.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </Section>
 
