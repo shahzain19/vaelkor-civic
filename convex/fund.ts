@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { FUND_CONTRIBUTION, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, PAYMENT_METHODS, formatCents } from "../lib/civic";
+import { FUND_CONTRIBUTION, FUND_GOAL_MAX, PAYMENT_METHODS, formatCents, fundGoalFor } from "../lib/civic";
 import { requireRole, requireUser } from "./auth";
 import { err, toSafeError } from "./errors";
 import { enforceRateLimit } from "./rateLimit";
+import { normalizeRole } from "./lifecycle";
 
 /**
  * The community fund goal, minted when a work order opens.
@@ -15,12 +16,13 @@ import { enforceRateLimit } from "./rateLimit";
  * and a work order, or it has neither. The claim gate and the dossier both
  * rely on that being true.
  *
- * The amount is a category default. It is deliberately a separate table from
- * the work order rather than a column on it, so a future reporter override
- * (Phase 4) can record a *proposed* goal on the issue at report time without
- * touching the work order row, and the administrator's adjustment (Phase 2)
- * can be a new row rather than an overwrite — which keeps the history of who
- * changed the target and why.
+ * The amount is the case's tier (see `fundGoalFor`), not a per-category table
+ * of near-identical numbers. It is deliberately a separate table from the work
+ * order rather than a column on it, so a future reporter override (Phase 4)
+ * can record a *proposed* goal on the issue at report time without touching the
+ * work order row, and the administrator's adjustment (Phase 2) can be a new row
+ * rather than an overwrite — which keeps the history of who changed the target
+ * and why.
  */
 export async function createFundGoalForIssue(
   ctx: import("./_generated/server").MutationCtx,
@@ -39,7 +41,7 @@ export async function createFundGoalForIssue(
   await ctx.db.insert("fundGoals", {
     issueId,
     workOrderId: issue.workOrderId,
-    targetCents: FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT,
+    targetCents: fundGoalFor(issue.category, issue.severity),
     createdAt: Date.now(),
   });
 }
@@ -211,7 +213,11 @@ export const listPendingClaims = query({
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", user.subject))
       .first();
-    if (!convexUser || convexUser.role !== "admin") return [];
+    // Normalised rather than compared raw: an account still holding the legacy
+    // `inspector` role is an admin everywhere else, and returning [] here would
+    // show them an empty queue with no reason given. Returns [] rather than
+    // throwing because this query is skipped, not error-caught, on the client.
+    if (!convexUser || normalizeRole(convexUser.role) !== "admin") return [];
 
     const claims = await ctx.db
       .query("fundClaims")

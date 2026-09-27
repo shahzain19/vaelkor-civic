@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { DollarSign, LifeBuoy, ShieldAlert } from "lucide-react";
+import { useAction, useConvex, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { Database, DollarSign, Download, LifeBuoy, ShieldAlert } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { MAX_GRANT, type EscalatedCase } from "@/convex/oversight";
 import type { SeriesPoint } from "@/convex/analytics";
-import { PageHeader, PageShell, Section } from "@/components/shell";
+import { PageHeader, PageShell, ScrollRow, Section } from "@/components/shell";
 import {
   ActionButton,
   Banner,
@@ -119,6 +119,8 @@ export default function AdminOversightPage() {
           </div>
         }
       />
+
+      <LedgerTools />
 
       {view === "queue" ? (
         <Section
@@ -357,6 +359,159 @@ function QueueRow({ row }: { row: EscalatedCase }) {
       </div>
     </li>
   );
+}
+
+/* Ledger tools ------------------------------------------------------------- */
+
+/**
+ * Taking the ledger away, and filling it when there is nothing to take.
+ *
+ * The export runs the query once and hands the browser a file; it is not a
+ * reactive subscription, because a 5,000-row CSV has no business being
+ * refetched every time a case changes underneath it. The seed is additive and
+ * is the only way to get a demonstrable ledger onto an empty deployment, so
+ * what a press will do is written under the buttons rather than left to a
+ * browser confirm() the page cannot style.
+ */
+function LedgerTools() {
+  const convex = useConvex();
+  const seed = useAction(api.admin_demo.seedDemoData);
+
+  const [exporting, setExporting] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [notice, setNotice] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  async function handleExport() {
+    setExporting(true);
+    setNotice(null);
+    try {
+      const { csv, rowCount, truncated } = await convex.query(
+        api.admin_export.exportCsv,
+        {},
+      );
+      downloadCsv(csv);
+
+      if (rowCount === 0) {
+        setNotice({
+          tone: "success",
+          text: "The ledger is empty — the file has a header row and no cases.",
+        });
+      } else if (truncated) {
+        setNotice({
+          tone: "success",
+          text: `Exported the first ${rowCount.toLocaleString()} cases. The ledger is larger than one export, so this file is not the whole ledger.`,
+        });
+      } else {
+        setNotice({
+          tone: "success",
+          text: `Exported ${rowCount.toLocaleString()} case${rowCount === 1 ? "" : "s"} to your downloads.`,
+        });
+      }
+    } catch (e) {
+      setNotice({
+        tone: "error",
+        text:
+          e instanceof Error && e.message
+            ? e.message
+            : "Could not export the ledger. Nothing was downloaded.",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleSeed() {
+    setSeeding(true);
+    setNotice(null);
+    try {
+      const result = await seed({});
+      setNotice({
+        tone: "success",
+        text: `Added ${result.issuesCreated} demo cases for ${result.usersCreated} people. Nothing was overwritten.`,
+      });
+    } catch (e) {
+      setNotice({
+        tone: "error",
+        text:
+          e instanceof Error && e.message
+            ? e.message
+            : "Could not seed demo data. The ledger is unchanged.",
+      });
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  // The two share one notice, so letting them run at once would let the slower
+  // one overwrite the other's result. One at a time; the buttons say so rather
+  // than the admin discovering it by pressing both.
+  const busy = exporting || seeding;
+
+  return (
+    <Section label="Ledger tools">
+      <div className="flex flex-col gap-3">
+        <ScrollRow>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            pending={exporting}
+            pendingLabel="Building CSV…"
+            disabled={seeding}
+          >
+            <Download className="size-3.5" />
+            Export CSV
+          </ActionButton>
+          <ActionButton
+            variant="outline"
+            size="sm"
+            onClick={handleSeed}
+            pending={seeding}
+            pendingLabel="Seeding…"
+            disabled={exporting}
+          >
+            <Database className="size-3.5" />
+            Seed demo data
+          </ActionButton>
+        </ScrollRow>
+
+        <p className="text-[0.75rem] leading-relaxed text-muted-foreground">
+          The export writes one row per case to a CSV on this machine. Seeding
+          appends 7 cases and 7 people, so the ledger looks like a real one at
+          every stage — run it twice and you get two batches.
+        </p>
+
+        <LiveRegion message={notice?.text} assertive={notice?.tone === "error"} />
+        {notice && <Banner tone={notice.tone}>{notice.text}</Banner>}
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * Hands a CSV string to the browser as a download.
+ *
+ * The byte-order mark is deliberate: without it Excel opens the file as Latin-1
+ * and mangles the accented street names in the address column.
+ *
+ * The object URL is released on the next tick rather than immediately. Some
+ * browsers have not finished reading the blob by the time `click()` returns,
+ * and revoking underneath them truncates the file — which for a ledger export
+ * means a file that looks complete and is not.
+ */
+function downloadCsv(csv: string) {
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `vaelkor-ledger-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /* Reporting ---------------------------------------------------------------- */

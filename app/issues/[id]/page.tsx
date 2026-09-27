@@ -18,7 +18,7 @@ import { ActionButton, Banner, EmptyState, LiveRegion } from "@/components/feedb
 import { FundingSection } from "@/components/FundingSection";
 import { Meta, MetaList, PageShell, Section } from "@/components/shell";
 import { buttonVariants } from "@/components/ui/button";
-import { CONFIRMATION_THRESHOLD, FUND_GOALS, FUND_GOAL_DEFAULT, FUND_GOAL_MAX, formatCents, type Role } from "@/lib/civic";
+import { CONFIRMATION_THRESHOLD, FUND_GOAL_MAX, formatCents, fundGoalFor, type Role } from "@/lib/civic";
 import { formatCoord } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -305,7 +305,7 @@ export default function CaseFilePage({
                 <h2 className="eyebrow mb-3">Fund this work</h2>
                 <FundingSection
                   issueId={issueId}
-                  goalCents={issue.fundGoal?.targetCents ?? FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT}
+                  goalCents={issue.fundGoal?.targetCents ?? fundGoalFor(issue.category, issue.severity)}
                   myClaimStatus={claimStatus}
                   myClaimAmount={claimAmount}
                   onSuccess={() => {

@@ -18,6 +18,7 @@ import {
   type TestUser,
 } from "./harness";
 import { reachFundingStage } from "./flow";
+import { FUND_CONTRIBUTION, fundGoalFor } from "@/lib/civic";
 
 /* Helpers ------------------------------------------------------------------ */
 
@@ -41,6 +42,37 @@ async function getClaims(t: Harness, issueId: Id<"issues">) {
       .withIndex("by_issue", (q) => q.eq("issueId", issueId))
       .collect(),
   );
+}
+
+/**
+ * Raises `fraction` of the goal through submitted-and-approved claims, spread
+ * over as many pledgers as the per-claim cap requires.
+ *
+ * This is the claim path rather than the contribution path, so the money only
+ * counts once an administrator has approved it — which is the whole point of
+ * the test that uses it.
+ */
+async function approveClaimsUpToFraction(
+  t: Harness,
+  issueId: Id<"issues">,
+  admin: TestUser,
+  fraction: number,
+): Promise<void> {
+  const cap = FUND_CONTRIBUTION.max;
+  const target =
+    Math.ceil((fundGoalFor("road", "medium") * fraction) / cap) * cap;
+
+  for (let pledged = 0; pledged < target; pledged += cap) {
+    const pledger = await makeUser(t, "citizen");
+    const screenshotStorageId = await storeImage(t);
+    const { claimId } = await as(pledger)(t).mutation(api.fund.submitClaim, {
+      issueId,
+      amountCents: cap,
+      paymentMethod: "easypaisa",
+      screenshotStorageId,
+    });
+    await as(admin)(t).mutation(api.fund.approveClaim, { claimId });
+  }
 }
 
 /* Submit claim -------------------------------------------------------------- */
@@ -381,21 +413,11 @@ describe("approveClaim", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachFundingStage(t, reporter);
-    const funder = await makeUser(t, "citizen");
     const admin = await makeUser(t, "admin");
     const contractor = await makeUser(t, "contractor");
-    const storageId = await storeImage(t);
 
-    // Fund 80% of the goal via claims
-    await as(funder)(t).mutation(api.fund.submitClaim, {
-      issueId,
-      amountCents: 4000,
-      paymentMethod: "easypaisa",
-      screenshotStorageId: storageId,
-    });
-
-    const claim = (await getClaims(t, issueId))[0];
-    await as(admin)(t).mutation(api.fund.approveClaim, { claimId: claim._id });
+    // Fund 80% of the goal via approved claims
+    await approveClaimsUpToFraction(t, issueId, admin, 0.8);
 
     // Now contractor can claim
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
@@ -613,5 +635,102 @@ describe("getMyClaim", () => {
 
     const result = await anon(t).query(api.fund.getMyClaim, { issueId });
     expect(result).toBeNull();
+  });
+});
+/* Admin claim queue --------------------------------------------------------- */
+
+describe("fund.listPendingClaims", () => {
+  it("returns an empty list to a signed-out visitor rather than failing", async () => {
+    // This query is `skip`ped on the client for non-admins, but it is still
+    // reachable directly, so it must answer with nothing rather than throw.
+    const t = setup();
+    expect(await anon(t).query(api.fund.listPendingClaims, {})).toEqual([]);
+  });
+
+  it("returns an empty list to every civic role", async () => {
+    const t = setup();
+    for (const role of ["citizen", "contractor"] as const) {
+      const user = await makeUser(t, role);
+      expect(await as(user)(t).query(api.fund.listPendingClaims, {})).toEqual([]);
+    }
+  });
+
+  it("returns an empty list when no user row exists for the identity", async () => {
+    // A Clerk session that never finished onboarding has an identity but no
+    // Convex user. That must read as "not an admin", not as an error.
+    const t = setup();
+    const result = await t
+      .withIdentity({ subject: "user_never_onboarded" })
+      .query(api.fund.listPendingClaims, {});
+    expect(result).toEqual([]);
+  });
+
+  it("lists a pending claim with the case and claimant joined on", async () => {
+    const t = setup();
+    const admin = await makeUser(t, "admin");
+    const reporter = await makeUser(t, "citizen");
+    const { issueId } = await reachFundingStage(t, reporter);
+    const funder = await makeUser(t, "citizen", "Bilal Ahmed");
+    const screenshotStorageId = await storeImage(t);
+
+    await as(funder)(t).mutation(api.fund.submitClaim, {
+      issueId,
+      amountCents: 250,
+      paymentMethod: "easypaisa",
+      screenshotStorageId,
+    });
+
+    const claims = await as(admin)(t).query(api.fund.listPendingClaims, {});
+    expect(claims).toHaveLength(1);
+    expect(claims[0].status).toBe("pending");
+    expect(claims[0].amountCents).toBe(250);
+    expect(claims[0].claimantName).toBe("Bilal Ahmed");
+    // The queue is unusable without these: an admin approves against the case
+    // number and the screenshot.
+    expect(claims[0].issueCaseNumber).toMatch(/^CIV-/);
+    expect(claims[0].screenshotUrl).toBeTruthy();
+  });
+
+  it("leaves out claims that are no longer pending", async () => {
+    const t = setup();
+    const admin = await makeUser(t, "admin");
+    const reporter = await makeUser(t, "citizen");
+    const { issueId } = await reachFundingStage(t, reporter);
+    const funder = await makeUser(t, "citizen");
+    const screenshotStorageId = await storeImage(t);
+
+    const { claimId } = await as(funder)(t).mutation(api.fund.submitClaim, {
+      issueId,
+      amountCents: 250,
+      paymentMethod: "easypaisa",
+      screenshotStorageId,
+    });
+    await as(admin)(t).mutation(api.fund.approveClaim, { claimId });
+
+    expect(await as(admin)(t).query(api.fund.listPendingClaims, {})).toEqual([]);
+  });
+
+  it("still serves an administrator holding the legacy inspector role", async () => {
+    // `normalizeRole` folds `inspector` into `admin`, and every other gate in
+    // the app honours that. This one compared the raw string, so a legacy
+    // administrator looked at a permanently empty claims queue with no
+    // explanation — the exact silent-rejection the fold is supposed to prevent.
+    const t = setup();
+    const legacyAdmin = await makeUser(t, "admin");
+    await t.run((ctx) => ctx.db.patch(legacyAdmin.userId, { role: "inspector" }));
+
+    const reporter = await makeUser(t, "citizen");
+    const { issueId } = await reachFundingStage(t, reporter);
+    const funder = await makeUser(t, "citizen");
+    const screenshotStorageId = await storeImage(t);
+    await as(funder)(t).mutation(api.fund.submitClaim, {
+      issueId,
+      amountCents: 250,
+      paymentMethod: "easypaisa",
+      screenshotStorageId,
+    });
+
+    const claims = await as(legacyAdmin)(t).query(api.fund.listPendingClaims, {});
+    expect(claims).toHaveLength(1);
   });
 });

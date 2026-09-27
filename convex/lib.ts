@@ -11,7 +11,7 @@ import {
   type IssueStatus,
   type WorkOrderStatus,
 } from "./lifecycle";
-import { FUND_GOALS, FUND_GOAL_DEFAULT } from "../lib/civic";
+import { fundGoalFor } from "../lib/civic";
 
 export const CONFIRMATION_THRESHOLD = 3;
 
@@ -121,13 +121,13 @@ export async function createWorkOrderForIssue(
   // The community fund is minted with the work order, not by a separate
   // action. A case with no fund goal cannot be claimed, and writing it here is
   // the only path — so "no goal" and "no work order" are the same condition.
-  // The amount is a category default; the reporter and the administrator can
+  // The amount is the case's tier; the reporter and the administrator can
   // adjust it later, but the row always exists for a case that has a work
   // order, which is what the claim gate and the dossier rely on.
   await ctx.db.insert("fundGoals", {
     issueId,
     workOrderId,
-    targetCents: FUND_GOALS[issue.category] ?? FUND_GOAL_DEFAULT,
+    targetCents: fundGoalFor(issue.category, issue.severity),
     createdAt: now,
   });
 

@@ -219,26 +219,41 @@ export const EVIDENCE_META: Record<
 export const CONFIRMATION_THRESHOLD = 3;
 
 /**
- * The community fund a case must raise before a contractor may claim it.
+ * The two community fund tiers, in cents: PKR 5,000 and PKR 10,000.
  *
- * In cents, because floating-point money is how people get shortchanged. The
- * values are per category — a streetlight costs less to fix than a drainage
- * repair — and they are defaults only. The reporter may propose a different
- * figure, and an administrator may adjust one (see `oversight.adjustFundGoal`).
+ * In cents, because floating-point money is how people get shortchanged. Two
+ * tiers rather than a per-category table, because a table of nine near-identical
+ * numbers is a number nobody can hold in their head, and a pledger who is told
+ * "PKR 7,300" has no way to judge whether that is fair. The rule that picks the
+ * tier is one sentence, and it is printed on the case.
  *
  * These are pledges, not payments. The app never moves real money; the fund is
  * a commitment ledger that is released to the contractor on verified
  * completion. Nothing here is a PCI surface.
  */
-export const FUND_GOALS: Record<string, number> = {
-  road: 5000,
-  garbage: 2000,
-  drainage: 8000,
-  streetlight: 4000,
-};
+export const FUND_GOAL_TIERS = { standard: 500_000, major: 1_000_000 } as const;
 
-/** The default goal for a category the map does not yet know. */
-export const FUND_GOAL_DEFAULT = 5000;
+/**
+ * Categories that are the expensive repair whatever else is true of the case.
+ * A collapsed drain is not made cheap by being reported as low severity.
+ */
+const FUND_MAJOR_CATEGORIES: ReadonlySet<string> = new Set(["drainage"]);
+
+/**
+ * The tier a case sits in: drainage, or anything severe, asks the bigger sum.
+ *
+ * Severity is read as a floor, not a ceiling — a high-severity pothole and a
+ * high-severity streetlight both cost real money to put right, so severity
+ * promotes a case to the major tier and never demotes it out of one.
+ *
+ * Returns cents. The goal is only a default: a reporter may propose a different
+ * figure, and an administrator may adjust one (see `fund.adjustGoal`).
+ */
+export function fundGoalFor(category: string, severity: string): number {
+  if (FUND_MAJOR_CATEGORIES.has(category)) return FUND_GOAL_TIERS.major;
+  if (severity === "high") return FUND_GOAL_TIERS.major;
+  return FUND_GOAL_TIERS.standard;
+}
 
 /** Bounds on a single pledge, in cents. */
 export const FUND_CONTRIBUTION = { min: 100, max: 50000 } as const;

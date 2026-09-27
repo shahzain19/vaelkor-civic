@@ -21,7 +21,7 @@ import {
   type TestUser,
 } from "./harness";
 import { reachConfirmed, reachVerified } from "./flow";
-import { FUND_CONTRIBUTION, FUND_GOAL_DEFAULT, FUND_GOALS, FUND_GOAL_MAX, formatCents } from "@/lib/civic";
+import { FUND_CONTRIBUTION, FUND_GOAL_MAX, formatCents, fundGoalFor } from "@/lib/civic";
 
 /* Helpers ------------------------------------------------------------------ */
 
@@ -42,6 +42,30 @@ async function getGoal(t: Harness, issueId: Id<"issues">): Promise<{ targetCents
     if (!goal) return null;
     return { id: goal._id, targetCents: goal.targetCents };
   });
+}
+
+/**
+ * Pledges enough to cross `fraction` of the case's goal, spread over as many
+ * pledgers as the per-pledge cap requires.
+ *
+ * A PKR 5,000 goal cannot be funded by one person, so a test that wants "80% of
+ * the goal" has to say who gave what. These tests are about the gate, not about
+ * the people, so the split is left to this helper.
+ */
+async function pledgeUpToFraction(
+  t: Harness,
+  issueId: Id<"issues">,
+  fraction: number,
+): Promise<number> {
+  const cap = FUND_CONTRIBUTION.max;
+  const target = Math.ceil((fundGoalFor("road", "medium") * fraction) / cap) * cap;
+  let pledged = 0;
+  while (pledged < target) {
+    const pledger = await makeUser(t, "citizen");
+    await as(pledger)(t).mutation(api.fund.contribute, { issueId, amountCents: cap });
+    pledged += cap;
+  }
+  return pledged;
 }
 
 /** Returns total raised and contributor count. */
@@ -66,7 +90,7 @@ describe("fund goal creation", () => {
 
     const goal = await getGoal(t, issueId);
     expect(goal).not.toBeNull();
-    expect(goal!.targetCents).toBe(FUND_GOALS["road"] ?? FUND_GOAL_DEFAULT);
+    expect(goal!.targetCents).toBe(fundGoalFor("road", "medium"));
     expect(goal!.id).toBeDefined();
   });
 
@@ -96,7 +120,7 @@ describe("fund goal creation", () => {
     await as(citizen3)(t).mutation(api.issues.confirm, { issueId });
 
     const goal = await getGoal(t, issueId);
-    expect(goal!.targetCents).toBe(FUND_GOALS["drainage"]); // 8000 cents = PKR 80
+    expect(goal!.targetCents).toBe(fundGoalFor("drainage", "high")); // major tier, PKR 10,000
   });
 
   it("does not create a duplicate goal if one already exists", async () => {
@@ -219,10 +243,7 @@ describe("fund contributions", () => {
     const contractor = await makeUser(t, "contractor");
 
     // Contribute enough to meet threshold
-    await as(funder)(t).mutation(api.fund.contribute, {
-      issueId,
-      amountCents: 5000,
-    });
+    await pledgeUpToFraction(t, issueId, 0.8);
 
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
 
@@ -311,12 +332,8 @@ describe("contractor claim funding gate", () => {
     const { issueId, workOrderId } = await reachFundingStage(t, reporter);
     const contractor = await makeUser(t, "contractor");
 
-    // Road category default is 5000 cents. 80% = 4000 cents.
-    const funder = await makeUser(t, "citizen");
-    await as(funder)(t).mutation(api.fund.contribute, {
-      issueId,
-      amountCents: 4000,
-    });
+    // Road/medium sits in the standard tier, so 80% of the goal.
+    await pledgeUpToFraction(t, issueId, 0.8);
 
     // Should succeed
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
@@ -345,14 +362,9 @@ describe("contractor claim funding gate", () => {
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachFundingStage(t, reporter);
     const contractor = await makeUser(t, "contractor");
-    const funder = await makeUser(t, "citizen");
 
     // Fund the full goal
-    const goal = await getGoal(t, issueId);
-    await as(funder)(t).mutation(api.fund.contribute, {
-      issueId,
-      amountCents: goal!.targetCents,
-    });
+    await pledgeUpToFraction(t, issueId, 1);
 
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
   });
@@ -548,7 +560,7 @@ describe("fund query", () => {
     expect(fundData).not.toBeNull();
     expect(fundData!.totalCents).toBe(8000);
     expect(fundData!.funderCount).toBe(2);
-    expect(fundData!.goalCents).toBe(FUND_GOALS["road"] ?? FUND_GOAL_DEFAULT);
+    expect(fundData!.goalCents).toBe(fundGoalFor("road", "medium"));
     expect(fundData!.contributionsOpen).toBe(true);
   });
 
@@ -556,14 +568,10 @@ describe("fund query", () => {
     const t = setup();
     const reporter = await makeUser(t, "citizen");
     const { issueId, workOrderId } = await reachFundingStage(t, reporter);
-    const funder = await makeUser(t, "citizen");
     const contractor = await makeUser(t, "contractor");
 
     // Contribute enough to meet threshold
-    await as(funder)(t).mutation(api.fund.contribute, {
-      issueId,
-      amountCents: 5000,
-    });
+    await pledgeUpToFraction(t, issueId, 0.8);
 
     await as(contractor)(t).mutation(api.workOrders.accept, { workOrderId });
 
