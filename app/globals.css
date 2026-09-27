@@ -81,6 +81,70 @@
   --status-active: oklch(0.5 0.14 250);
   --status-inspection: oklch(0.5 0.16 300);
   --status-resolved: oklch(0.47 0.11 158);
+
+  /* Regional palette. See `lib/regions.ts` for the reasoning; the short
+     version is that these three tokens carry all the local character, and the
+     default is the current design so a visitor with no signal sees no change
+     at all. Chroma stays in the second decimal on purpose. */
+  --region-accent: oklch(0.52 0.012 250);
+  --region-wash: oklch(0.985 0.002 250);
+  --region-line: oklch(0.912 0.004 250);
+}
+
+/* One block per region. Nothing here may touch a `--status-*` token: a status
+   colour is a claim about a case, not a mood. */
+[data-region="karachi"] {
+  --region-accent: oklch(0.5 0.02 250);
+  --region-wash: oklch(0.978 0.004 250);
+  --region-line: oklch(0.9 0.012 250);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.965 0.003 250);
+  --border: oklch(0.912 0.004 250);
+}
+
+[data-region="lahore"] {
+  --region-accent: oklch(0.52 0.055 35);
+  --region-wash: oklch(0.98 0.007 40);
+  --region-line: oklch(0.905 0.018 40);
+  --card: oklch(0.998 0.004 40);
+  --muted: oklch(0.965 0.007 40);
+  --border: oklch(0.905 0.018 40);
+}
+
+[data-region="islamabad"] {
+  --region-accent: oklch(0.5 0.055 155);
+  --region-wash: oklch(0.979 0.007 155);
+  --region-line: oklch(0.902 0.018 155);
+  --card: oklch(0.998 0.004 155);
+  --muted: oklch(0.965 0.007 155);
+  --border: oklch(0.902 0.018 155);
+}
+
+[data-region="peshawar"] {
+  --region-accent: oklch(0.5 0.06 105);
+  --region-wash: oklch(0.98 0.008 105);
+  --region-line: oklch(0.905 0.02 105);
+  --card: oklch(0.998 0.005 105);
+  --muted: oklch(0.965 0.008 105);
+  --border: oklch(0.905 0.02 105);
+}
+
+[data-region="quetta"] {
+  --region-accent: oklch(0.5 0.045 70);
+  --region-wash: oklch(0.98 0.007 70);
+  --region-line: oklch(0.905 0.018 70);
+  --card: oklch(0.998 0.004 70);
+  --muted: oklch(0.965 0.007 70);
+  --border: oklch(0.905 0.018 70);
+}
+
+[data-region="kashmir"] {
+  --region-accent: oklch(0.5 0.085 200);
+  --region-wash: oklch(0.978 0.008 200);
+  --region-line: oklch(0.9 0.022 200);
+  --card: oklch(0.998 0.004 200);
+  --muted: oklch(0.965 0.007 200);
+  --border: oklch(0.9 0.022 200);
 }
 
 .dark {
@@ -116,7 +180,34 @@
   --status-active: oklch(0.68 0.13 250);
   --status-inspection: oklch(0.7 0.14 300);
   --status-resolved: oklch(0.72 0.14 158);
+
+  /* Dark needs a little more chroma and a lighter accent to carry the same
+     idea, so each regional value is re-picked rather than reused. */
+  --region-accent: oklch(0.66 0.03 250);
+  --region-wash: oklch(0.19 0.005 250);
+  --region-line: oklch(1 0 0 / 13%);
 }
+.dark [data-region="lahore"] {
+  --region-accent: oklch(0.72 0.065 45);
+  --region-wash: oklch(0.19 0.011 40);
+  --region-line: oklch(1 0 0 / 16%);
+}
+.dark [data-region="islamabad"] {
+  --region-accent: oklch(0.72 0.07 155);
+  --region-wash: oklch(0.19 0.011 155);
+  --region-line: oklch(1 0 0 / 16%);
+}
+.dark [data-region="peshawar"] {
+  --region-accent: oklch(0.73 0.075 105);
+  --region-wash: oklch(0.19 0.012 105);
+  --region-line: oklch(1 0 0 / 16%);
+}
+.dark [data-region="quetta"] {
+  --region-accent: oklch(0.74 0.06 75);
+  --region-wash: oklch(0.19 0.011 70);
+  --region-line: oklch(1 0 0 / 16%);
+}
+
 
 @theme inline {
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
@@ -200,6 +291,39 @@
   /* Section eyebrow. Replaces card headers so blocks read as one document. */
   .eyebrow {
     @apply text-[0.6875rem] leading-none font-semibold tracking-[0.09em] text-muted-foreground uppercase;
+  }
+
+  /* Regional marks. The only three places the palette is allowed to show, and
+     all three are decoration: a hairline, a wash, a veil. Anything that
+     carries meaning keeps `border-border` and the status tones. */
+  .region-rule {
+    border-color: var(--region-line);
+  }
+
+  .region-wash {
+    background-color: var(--region-wash);
+  }
+
+  /* Sits over the hero photograph, under the existing scrim so the caption keeps
+     its contrast. Painted at low alpha because the scrim above it is what
+     carries legibility — the veil only tints the middle of the frame. */
+  .region-veil {
+    background-image: linear-gradient(
+      to top,
+      color-mix(in oklab, var(--region-accent) 22%, transparent),
+      transparent 60%
+    );
+  }
+
+  .region-dot {
+    background-color: var(--region-accent);
+  }
+
+  /* The one place the accent is allowed to be a solid fill. Two pixels, the
+     full width of the content column, at the top of the page — enough to name
+     the region, small enough that nobody screenshots it as a design. */
+  .region-masthead {
+    background-color: var(--region-accent);
   }
 
   /* Segmented control track for filters. */
