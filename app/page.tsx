@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
-import { useRegion } from "@/hooks/use-region";
 import {
   ArrowRight,
   Camera,
@@ -158,7 +157,6 @@ const OBJECTIONS = [
 
 export default function LandingPage() {
   const { isAuthenticated } = useConvexAuth();
-  const region = useRegion();
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const recent = useQuery(api.issues.listRecent, { limit: 4 });
 
@@ -179,16 +177,7 @@ export default function LandingPage() {
   const roleName = me?.role ? ROLE_LABEL[me.role] : null;
 
   return (
-    /* The regional palette is set once here and inherited by everything below,
-       so no component needs to know it exists. Wrapping `PageShell` rather
-       than sitting inside it keeps the shell a shared, unthemed component, and
-       a plain block wrapper changes no layout. */
-    <div data-region={region}>
-      <PageShell width="wide">
-      {/* The regional signature. Two pixels of accent above the masthead, which
-          is the only saturated fill on the page; everything else regional is a
-          tint on a surface or a hairline. */}
-      <div className="region-masthead h-0.5 w-full" aria-hidden />
+    <PageShell width="wide">
       {/* Masthead. The lifecycle sits beside the headline rather than under a
           slogan, so a first-time visitor reads how the product actually works
           before deciding anything. */}
@@ -270,7 +259,6 @@ export default function LandingPage() {
           className="object-cover"
           sizes="(min-width: 1024px) 100vw, (min-width: 640px) 100vw, 100vw"
         />
-        <div className="region-veil absolute inset-0" aria-hidden />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
         <div className="absolute bottom-4 left-6 right-6 sm:bottom-6 sm:left-8">
           <p className="text-[0.75rem] font-mono text-white/60">
@@ -419,7 +407,7 @@ export default function LandingPage() {
               social layer — built for infrastructure, not engagement.
             </p>
           </div>
-          <div className="rounded-[var(--radius)] region-rule border bg-card p-5">
+          <div className="rounded-[var(--radius)] border border-border bg-card p-5">
             <p className="text-[0.75rem] font-mono text-muted-foreground">What the network does</p>
             <ul className="mt-4 space-y-3 text-[0.875rem]">
               {[
@@ -484,7 +472,7 @@ export default function LandingPage() {
           </div>
 
           {/* A live case, read through the same query the case page uses. */}
-          <div className="rounded-[var(--radius)] region-rule border bg-card p-5">
+          <div className="rounded-[var(--radius)] border border-border bg-card p-5">
             <p className="text-[0.75rem] font-mono text-muted-foreground">
               A funded case, live
             </p>
@@ -639,13 +627,11 @@ export default function LandingPage() {
           reader has run out of objections. The three lines under it name where
           the power actually sits, so the slogan is a summary of the mechanism
           rather than a claim the product does not otherwise make. */}
-      <section className="region-rule border-t pt-10 pb-14 sm:pt-14 sm:pb-20">
-        <span className="region-dot mx-auto mb-6 block h-px w-10" aria-hidden />
+      <section className="border-t border-border pt-10 pb-14 sm:pt-14 sm:pb-20">
         <h2 className="text-[2rem] leading-[0.95] font-semibold tracking-[-0.04em] text-center uppercase sm:text-[3.25rem] lg:text-[4rem]">
           Power to the people
         </h2>
       </section>
-      </PageShell>
-    </div>
+    </PageShell>
   );
 }
